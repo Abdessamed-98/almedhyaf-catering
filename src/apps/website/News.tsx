@@ -219,22 +219,6 @@ const News: React.FC = () => {
   return (
     <div className="overflow-hidden">
 
-      {/* ===== PAGE HEADER (compact, light) ===== */}
-      <section className="bg-gradient-to-b from-[#f7f3ec] to-[#f4f1ec] border-b border-[#eadfce]">
-        <motion.div {...fadeUp} className="max-w-7xl mx-auto px-6 py-12 md:py-16">
-          <span className="inline-flex items-center gap-3 text-brand-600 font-bold text-sm">
-            <span className="h-px w-10 bg-gradient-to-r from-transparent to-secondary-500" />
-            {ar ? 'غرفة الأخبار' : 'Newsroom'}
-          </span>
-          <h1 className="mt-3 font-display font-black text-3xl md:text-5xl text-brand-800 leading-tight">{ar ? 'الأخبار' : 'News'}</h1>
-          <p className="mt-3 text-gray-600 text-base md:text-lg max-w-2xl leading-relaxed">
-            {ar
-              ? 'إنجازاتنا، توسعاتنا، وشهاداتنا — قصص من الميدان توثّق مسيرة خدمة ضيوف الرحمن في مكة المكرمة.'
-              : 'Our milestones, expansions and certifications — stories from the field documenting our service to the Guests of Allah in Makkah.'}
-          </p>
-        </motion.div>
-      </section>
-
       {/* ===== FEATURED (light) ===== */}
       {featured && (
         <section className="bg-[#fbf7ef] text-ink py-16 md:py-24">

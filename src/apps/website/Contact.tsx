@@ -60,22 +60,6 @@ const Contact: React.FC = () => {
   return (
     <div className="overflow-hidden">
 
-      {/* ===== PAGE HEADER (compact, light) ===== */}
-      <section className="bg-gradient-to-b from-[#f7f3ec] to-[#f4f1ec] border-b border-[#eadfce]">
-        <motion.div {...fadeUp} className="max-w-7xl mx-auto px-6 py-12 md:py-16">
-          <span className="inline-flex items-center gap-3 text-brand-600 font-bold text-sm">
-            <span className="h-px w-10 bg-gradient-to-r from-transparent to-secondary-500" />
-            {ar ? 'نسعد بتواصلكم' : 'We’d love to hear from you'}
-          </span>
-          <h1 className="mt-3 font-display font-black text-3xl md:text-5xl text-brand-800 leading-tight">{ar ? 'تواصل معنا' : 'Contact us'}</h1>
-          <p className="mt-3 text-gray-600 text-base md:text-lg max-w-2xl leading-relaxed">
-            {ar
-              ? 'أخبرنا باحتياج الإعاشة القادم — عدد الوجبات، الموقع، ونطاق الخدمة — وفريقنا جاهز للرد والإعداد لك.'
-              : 'Tell us your next catering need — meal counts, location and service scope — and our team is ready to respond and prepare for you.'}
-          </p>
-        </motion.div>
-      </section>
-
       {/* ===== CONTACT PANEL + FORM (light) ===== */}
       <section className="bg-[#fbf7ef] text-ink py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-6">

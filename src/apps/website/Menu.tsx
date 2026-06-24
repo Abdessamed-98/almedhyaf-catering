@@ -141,20 +141,6 @@ const Menu: React.FC<MenuProps> = ({ onOrderNow }) => {
   return (
     <div className="overflow-hidden">
 
-      {/* ===== PAGE HEADER (compact, light) ===== */}
-      <section className="bg-gradient-to-b from-[#f7f3ec] to-[#f4f1ec] border-b border-[#eadfce]">
-        <motion.div {...fadeUp} className="max-w-7xl mx-auto px-6 py-12 md:py-16">
-          <span className="inline-flex items-center gap-3 text-brand-600 font-bold text-sm">
-            <span className="h-px w-10 bg-gradient-to-r from-transparent to-secondary-500" />
-            {ar ? 'خدماتنا' : 'Our Services'}
-          </span>
-          <h1 className="mt-3 font-display font-black text-3xl md:text-5xl text-brand-800 leading-tight">{ar ? 'حلول إعاشة متكاملة لكل موسم' : 'Integrated catering solutions for every season'}</h1>
-          <p className="mt-3 text-gray-600 text-base md:text-lg max-w-2xl leading-relaxed">{ar
-            ? 'من قلب مكة المكرمة، نقدّم خدمات تغذية احترافية لمواسم الحج والعمرة، الفنادق، الفعاليات الكبرى، وبرامج إفطار الصائمين — بأعلى معايير الجودة والسلامة الغذائية.'
-            : 'From the heart of Makkah, we deliver professional food services for Hajj & Umrah, hotels, major events and Ramadan Iftar programs — at the highest standards of quality and food safety.'}</p>
-        </motion.div>
-      </section>
-
       {/* ===== SERVICE 01 (light) ===== */}
       <section className="bg-[#fbf7ef] text-ink py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-6">

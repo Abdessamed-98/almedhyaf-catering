@@ -127,20 +127,6 @@ const About: React.FC<AboutProps> = ({ onOrderNow }) => {
   return (
     <div className="overflow-hidden">
 
-      {/* ===== PAGE HEADER (compact, light) ===== */}
-      <section className="bg-gradient-to-b from-[#f7f3ec] to-[#f4f1ec] border-b border-[#eadfce]">
-        <motion.div {...fadeUp} className="max-w-7xl mx-auto px-6 py-12 md:py-16">
-          <span className="inline-flex items-center gap-3 text-brand-600 font-bold text-sm">
-            <span className="h-px w-10 bg-gradient-to-r from-transparent to-secondary-500" />
-            {ar ? 'من نحن' : 'About'}
-          </span>
-          <h1 className="mt-3 font-display font-black text-3xl md:text-5xl text-brand-800 leading-tight">{ar ? 'مطبخ المضياف العربي من قلب مكة' : 'Al-Mudhayaf Al-Arabi — from the heart of Makkah'}</h1>
-          <p className="mt-3 text-gray-600 text-base md:text-lg max-w-2xl leading-relaxed">{ar
-            ? 'شركة إعاشة سعودية وطنية تخدم ضيوف الرحمن بأعلى معايير الجودة والضيافة — حيث الجودة ليست خياراً، بل أساس.'
-            : 'A national Saudi catering company serving the Guests of Allah with the highest standards of quality and hospitality — where quality is not an option, but the foundation.'}</p>
-        </motion.div>
-      </section>
-
       {/* ===== STORY (light) ===== */}
       <section className="bg-[#fbf7ef] text-ink py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
