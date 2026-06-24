@@ -38,7 +38,7 @@ const StoryGallery: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative mx-auto w-full max-w-sm aspect-square">
+    <div className="relative mx-auto w-full max-w-lg aspect-square">
       {/* soft brand glow behind the deck */}
       <div className="absolute inset-8 rounded-full bg-secondary-400/15 blur-3xl" />
 
