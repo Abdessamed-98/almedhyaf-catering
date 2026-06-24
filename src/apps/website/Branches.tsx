@@ -151,7 +151,9 @@ const Branches: React.FC = () => {
   );
 
   return (
-    <div className="overflow-hidden">
+    // NB: no `overflow-hidden` here — it would break the map's `position: sticky`.
+    // Each decorative section below clips its own bleed instead.
+    <div>
 
       {/* ===== MAP + KITCHEN CARDS (light) ===== */}
       <section id="kitchens-map" className="bg-[#fbf7ef] text-ink py-16 md:py-24">
