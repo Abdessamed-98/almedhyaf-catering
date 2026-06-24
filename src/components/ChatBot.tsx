@@ -36,7 +36,7 @@ const ChatBot: React.FC = () => {
         <span className="absolute -top-0.5 -end-0.5 w-3.5 h-3.5 rounded-full bg-green-400 ring-2 ring-white" />
         {/* robot */}
         <span className="robo-bob relative">
-          <svg viewBox="0 0 48 48" className="w-9 h-9 drop-shadow-sm" fill="none">
+          <svg viewBox="0 0 48 48" className="w-12 h-12 drop-shadow-sm" fill="none">
             {/* antenna */}
             <line x1="24" y1="6.5" x2="24" y2="11" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" />
             <circle className="robo-antenna" cx="24" cy="5" r="2.6" fill="#F8C15D" />
