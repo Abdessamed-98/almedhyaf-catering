@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    font-family: 'Alexandria', sans-serif;
+    direction: rtl;
+    text-align: right;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    line-height: 1.7;            /* readable body, generous for Arabic */
+  }
+  /* Subtle tightening only for Latin (Arabic must never be letter-spaced) */
+  [dir="ltr"] { letter-spacing: -0.01em; }
+
+  /* Arabic must never be letter-spaced (it breaks letter joining).
+     Neutralise any tracking utilities while in RTL/Arabic. */
+  [dir="rtl"] [class*="tracking-"] {
+    letter-spacing: 0 !important;
+  }
+
+  /* Big Arabic headings need generous line-height + a little vertical room,
+     otherwise the tall marks/hamzas get clipped at large display sizes.
+     This overrides tight leading utilities (leading-[1.08], leading-tight…). */
+  [dir="rtl"] h1 { line-height: 1.4 !important; padding-block: 0.06em; }
+  [dir="rtl"] h2 { line-height: 1.45 !important; padding-block: 0.04em; }
+  [dir="rtl"] h3 { line-height: 1.55 !important; }
+}
+
+@layer utilities {
+  /* Hide scrollbar utility for horizontal scrolling areas */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Respect device safe-area (notches / home indicator) for bottom nav bars */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* --- Premium Arabian Heritage motifs --- */
+
+  /* Arch (mihrab) top — Arabian-architecture silhouette for cards/images */
+  .arch-top {
+    border-radius: 50% 50% 0.75rem 0.75rem / 32% 32% 0.75rem 0.75rem;
+  }
+  .arch-full {
+    border-radius: 50% 50% 1rem 1rem / 38% 38% 1rem 1rem;
+  }
+
+  /* Subtle parchment grain for heritage surfaces */
+  .bg-parchment {
+    background-color: #FAF7F2;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(232, 41, 76, 0.025) 0, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(248, 193, 93, 0.05) 0, transparent 40%);
+  }
+}
+
+@layer components {
+  /* Ornamental gold divider with a center diamond motif */
+  .ornament {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+  }
+  .ornament::before,
+  .ornament::after {
+    content: '';
+    height: 1px;
+    width: 2.5rem;
+    background: linear-gradient(to right, transparent, #F8C15D);
+  }
+  .ornament::after {
+    background: linear-gradient(to left, transparent, #F8C15D);
+  }
+}
