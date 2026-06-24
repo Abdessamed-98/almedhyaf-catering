@@ -16,17 +16,30 @@ const fadeUp = {
 
 const IMG = (n: string) => `concept/${n}.jpg`;
 
-// Artistic, self-rotating story showcase — primary image crossfades with a slow
-// Ken-Burns zoom every few seconds, a smaller collage card peeks out for depth.
+// Artistic story showcase — a 3D card that flips on the Y-axis every few seconds
+// to reveal the next photo. Both faces are framed; the incoming photo is loaded
+// onto the hidden face before the flip so it's ready as it swings into view.
 const STORY_SHOTS = ['16', '15', '12', '13', '10', '08'];
+const len = STORY_SHOTS.length;
+const shot = (n: number) => IMG(STORY_SHOTS[((n % len) + len) % len]);
+
+const Face: React.FC<{ src: string; back?: boolean }> = ({ src, back }) => (
+  <div className={`absolute inset-0 rounded-[2rem] overflow-hidden border-8 border-white shadow-2xl shadow-brand-900/15 [backface-visibility:hidden] ${back ? '[transform:rotateY(180deg)]' : ''}`}>
+    <img src={src} alt="" className="w-full h-full object-cover" />
+    <span className="absolute inset-0 bg-gradient-to-t from-ink/45 via-transparent to-transparent" />
+  </div>
+);
 
 const StoryGallery: React.FC = () => {
-  const [i, setI] = useState(0);
+  const [n, setN] = useState(0); // tick — also the index of the photo now facing front-or-back
   useEffect(() => {
-    const id = setInterval(() => setI(p => (p + 1) % STORY_SHOTS.length), 3200);
+    const id = setInterval(() => setN(v => v + 1), 3000);
     return () => clearInterval(id);
   }, []);
-  const sec = (i + 3) % STORY_SHOTS.length;
+
+  // n even → front face is showing photo n; n odd → back face is showing photo n.
+  const frontImg = shot(n % 2 === 0 ? n : n - 1);
+  const backImg = shot(n % 2 === 0 ? n - 1 : n);
 
   return (
     <div className="relative">
@@ -34,34 +47,26 @@ const StoryGallery: React.FC = () => {
       <div className="absolute -top-8 -right-6 w-32 h-32 rounded-full bg-secondary-400/30 blur-3xl" />
       <div className="absolute -bottom-10 -left-8 w-36 h-36 rounded-full bg-brand-600/10 blur-3xl" />
 
-      {/* primary rotating frame */}
-      <div className="relative aspect-[4/5] sm:aspect-square rounded-[2rem] overflow-hidden border-8 border-white shadow-2xl shadow-brand-900/15">
-        {STORY_SHOTS.map((n, idx) => (
-          <img
-            key={n}
-            src={IMG(n)}
-            alt=""
-            className={`absolute inset-0 w-full h-full object-cover ease-out ${idx === i ? 'opacity-100 scale-110 transition-all duration-[3200ms]' : 'opacity-0 scale-100 transition-opacity duration-1000'}`}
-          />
-        ))}
-        <span className="absolute inset-0 bg-gradient-to-t from-ink/45 via-transparent to-transparent" />
-        {/* gold corner ornament */}
-        <span className="absolute top-4 right-4 w-9 h-9 rounded-full bg-secondary-400/95 backdrop-blur flex items-center justify-center shadow-lg">
+      {/* perspective stage */}
+      <div className="relative aspect-[4/5] sm:aspect-square [perspective:1600px]">
+        {/* the flipping card */}
+        <div
+          className="absolute inset-0 [transform-style:preserve-3d] transition-transform duration-[1000ms] ease-in-out"
+          style={{ transform: `rotateY(${n * 180}deg)` }}
+        >
+          <Face src={frontImg} />
+          <Face src={backImg} back />
+        </div>
+
+        {/* static overlays (don't flip with the card) */}
+        <span className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-secondary-400/95 backdrop-blur flex items-center justify-center shadow-lg pointer-events-none">
           <span className="w-2 h-2 rotate-45 bg-ink" />
         </span>
-        {/* progress dots */}
-        <div className="absolute bottom-4 inset-x-0 flex justify-center gap-1.5">
+        <div className="absolute bottom-5 inset-x-0 z-10 flex justify-center gap-1.5 pointer-events-none">
           {STORY_SHOTS.map((_, idx) => (
-            <span key={idx} className={`h-1.5 rounded-full transition-all duration-500 ${idx === i ? 'w-7 bg-secondary-400' : 'w-1.5 bg-white/60'}`} />
+            <span key={idx} className={`h-1.5 rounded-full transition-all duration-500 ${idx === ((n % len) + len) % len ? 'w-7 bg-secondary-400' : 'w-1.5 bg-white/70'}`} />
           ))}
         </div>
-      </div>
-
-      {/* floating collage accent */}
-      <div className="hidden sm:block absolute -bottom-8 -left-8 w-36 h-36 rounded-2xl overflow-hidden border-[6px] border-white shadow-xl rotate-[-5deg]">
-        {STORY_SHOTS.map((n, idx) => (
-          <img key={n} src={IMG(n)} alt="" className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${idx === sec ? 'opacity-100' : 'opacity-0'}`} />
-        ))}
       </div>
     </div>
   );
