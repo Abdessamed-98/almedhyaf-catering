@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Button } from '../../ui';
 import { motion } from 'motion/react';
@@ -15,6 +15,57 @@ const fadeUp = {
 };
 
 const IMG = (n: string) => `concept/${n}.jpg`;
+
+// Artistic, self-rotating story showcase — primary image crossfades with a slow
+// Ken-Burns zoom every few seconds, a smaller collage card peeks out for depth.
+const STORY_SHOTS = ['16', '15', '12', '13', '10', '08'];
+
+const StoryGallery: React.FC = () => {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setI(p => (p + 1) % STORY_SHOTS.length), 3200);
+    return () => clearInterval(id);
+  }, []);
+  const sec = (i + 3) % STORY_SHOTS.length;
+
+  return (
+    <div className="relative">
+      {/* soft brand glows behind the frame */}
+      <div className="absolute -top-8 -right-6 w-32 h-32 rounded-full bg-secondary-400/30 blur-3xl" />
+      <div className="absolute -bottom-10 -left-8 w-36 h-36 rounded-full bg-brand-600/10 blur-3xl" />
+
+      {/* primary rotating frame */}
+      <div className="relative aspect-[4/5] sm:aspect-square rounded-[2rem] overflow-hidden border-8 border-white shadow-2xl shadow-brand-900/15">
+        {STORY_SHOTS.map((n, idx) => (
+          <img
+            key={n}
+            src={IMG(n)}
+            alt=""
+            className={`absolute inset-0 w-full h-full object-cover ease-out ${idx === i ? 'opacity-100 scale-110 transition-all duration-[3200ms]' : 'opacity-0 scale-100 transition-opacity duration-1000'}`}
+          />
+        ))}
+        <span className="absolute inset-0 bg-gradient-to-t from-ink/45 via-transparent to-transparent" />
+        {/* gold corner ornament */}
+        <span className="absolute top-4 right-4 w-9 h-9 rounded-full bg-secondary-400/95 backdrop-blur flex items-center justify-center shadow-lg">
+          <span className="w-2 h-2 rotate-45 bg-ink" />
+        </span>
+        {/* progress dots */}
+        <div className="absolute bottom-4 inset-x-0 flex justify-center gap-1.5">
+          {STORY_SHOTS.map((_, idx) => (
+            <span key={idx} className={`h-1.5 rounded-full transition-all duration-500 ${idx === i ? 'w-7 bg-secondary-400' : 'w-1.5 bg-white/60'}`} />
+          ))}
+        </div>
+      </div>
+
+      {/* floating collage accent */}
+      <div className="hidden sm:block absolute -bottom-8 -left-8 w-36 h-36 rounded-2xl overflow-hidden border-[6px] border-white shadow-xl rotate-[-5deg]">
+        {STORY_SHOTS.map((n, idx) => (
+          <img key={n} src={IMG(n)} alt="" className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${idx === sec ? 'opacity-100' : 'opacity-0'}`} />
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const About: React.FC<AboutProps> = ({ onOrderNow }) => {
   const { language } = useLanguage();
@@ -96,10 +147,8 @@ const About: React.FC<AboutProps> = ({ onOrderNow }) => {
       {/* ===== STORY (light) ===== */}
       <section className="bg-[#fbf7ef] text-ink py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
-          <motion.div {...fadeUp} className="grid grid-cols-2 gap-3 rounded-2xl overflow-hidden border-8 border-white shadow-2xl shadow-brand-900/10">
-            <img src={IMG('15')} alt="" className="row-span-2 w-full h-full object-cover" />
-            <img src={IMG('16')} alt="" className="w-full h-full object-cover aspect-[4/3]" />
-            <img src={IMG('17')} alt="" className="w-full h-full object-cover aspect-[4/3]" />
+          <motion.div {...fadeUp} className="px-2 sm:px-0">
+            <StoryGallery />
           </motion.div>
           <motion.div {...fadeUp}>
             <Kicker>{ar ? 'قصتنا' : 'Our story'}</Kicker>
