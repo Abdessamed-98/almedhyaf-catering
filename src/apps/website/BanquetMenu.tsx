@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Button } from '../../ui';
 import { motion } from 'motion/react';
-import { UtensilsCrossed, Flame, Salad, Cookie, Coffee, Star, ShoppingBag } from 'lucide-react';
+import { Star, ShoppingBag } from 'lucide-react';
+import { Kabsa, Grill, Mezze, Sweets, Drinks } from '../../components/icons';
 
 const fadeUp = {
   initial: { opacity: 0, y: 22 },
@@ -22,7 +23,7 @@ const BanquetMenu: React.FC<{ onOrderNow?: () => void }> = ({ onOrderNow }) => {
 
   const categories: Category[] = [
     {
-      key: 'mains', label: 'الأطباق الرئيسية', labelEn: 'Signature Mains', Icon: UtensilsCrossed,
+      key: 'mains', label: 'الأطباق الرئيسية', labelEn: 'Signature Mains', Icon: Kabsa,
       dishes: [
         { n: 'المندي', en: 'Mandi', d: 'لحم أو دجاج مدخّن في التنّور على أرز بسمتي معطّر بالبهارات.', de: 'Tandoor-smoked lamb or chicken over fragrant basmati rice.', img: 'dishes/main-4.jpg', star: true },
         { n: 'الكبسة', en: 'Kabsa', d: 'أرز بالبهارات السعودية مع اللحم والمكسرات والزبيب.', de: 'Saudi-spiced rice with meat, nuts and raisins.', img: 'dishes/main-1.jpg', star: true },
@@ -33,7 +34,7 @@ const BanquetMenu: React.FC<{ onOrderNow?: () => void }> = ({ onOrderNow }) => {
       ],
     },
     {
-      key: 'grill', label: 'المشويات', labelEn: 'From the Grill', Icon: Flame,
+      key: 'grill', label: 'المشويات', labelEn: 'From the Grill', Icon: Grill,
       dishes: [
         { n: 'مشاوي مشكّلة', en: 'Mixed Grill', d: 'تشكيلة كباب وتكة وأوصال مشوية على الفحم.', de: 'Charcoal kebab, tikka and chops.', img: 'dishes/grill-2.jpg', star: true },
         { n: 'شيش طاووق', en: 'Shish Tawook', d: 'قطع دجاج متبّلة مشوية على الأسياخ.', de: 'Marinated grilled chicken skewers.', img: 'dishes/grill-1.jpg' },
@@ -42,7 +43,7 @@ const BanquetMenu: React.FC<{ onOrderNow?: () => void }> = ({ onOrderNow }) => {
       ],
     },
     {
-      key: 'mezze', label: 'المقبلات والسلطات', labelEn: 'Mezze & Salads', Icon: Salad,
+      key: 'mezze', label: 'المقبلات والسلطات', labelEn: 'Mezze & Salads', Icon: Mezze,
       dishes: [
         { n: 'حمص ومتبّل', en: 'Hummus & Mutabbal', d: 'معجّنات الحمّص والباذنجان المدخّن.', de: 'Chickpea and smoky-eggplant dips.', img: 'dishes/mezze-1.jpg' },
         { n: 'تبّولة وفتّوش', en: 'Tabbouleh & Fattoush', d: 'سلطات شامية طازجة بزيت الزيتون.', de: 'Fresh Levantine salads in olive oil.', img: 'dishes/mezze-2.jpg' },
@@ -51,7 +52,7 @@ const BanquetMenu: React.FC<{ onOrderNow?: () => void }> = ({ onOrderNow }) => {
       ],
     },
     {
-      key: 'sweets', label: 'الحلويات', labelEn: 'Sweets', Icon: Cookie,
+      key: 'sweets', label: 'الحلويات', labelEn: 'Sweets', Icon: Sweets,
       dishes: [
         { n: 'اللقيمات', en: 'Luqaimat', d: 'كرات مقرمشة بالعسل والسمسم.', de: 'Crisp dumplings in honey & sesame.', img: 'dishes/luqaimat-1.jpg', star: true },
         { n: 'الكنافة', en: 'Kunafa', d: 'عجينة وجبن وقطر بماء الورد.', de: 'Cheese pastry in rose syrup.', img: 'dishes/kunafa-1.jpg' },
@@ -60,7 +61,7 @@ const BanquetMenu: React.FC<{ onOrderNow?: () => void }> = ({ onOrderNow }) => {
       ],
     },
     {
-      key: 'drinks', label: 'المشروبات', labelEn: 'Beverages', Icon: Coffee,
+      key: 'drinks', label: 'المشروبات', labelEn: 'Beverages', Icon: Drinks,
       dishes: [
         { n: 'القهوة العربية والتمر', en: 'Arabic Coffee & Dates', d: 'ضيافة أصيلة لاستقبال الضيوف.', de: 'The authentic welcome for your guests.', img: 'dishes/drink-1.jpg', star: true },
         { n: 'الشاي بالنعناع', en: 'Mint Tea', d: 'شاي ساخن بالنعناع الطازج.', de: 'Hot tea with fresh mint.', img: 'dishes/tea-1.jpg' },

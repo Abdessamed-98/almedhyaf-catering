@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { WebsitePage } from '../../types';
-import { X, ChevronLeft, ChevronRight, Download, ArrowLeft, MapPin, ClipboardList, ShieldCheck, Package, Truck, FileCheck, BadgeCheck, Users } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Download, ArrowLeft, MapPin } from 'lucide-react';
+import { Clipboard, FoodSafety, Packaging, Truck, Report, Certified, Team, Locations } from '../../components/icons';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Button } from '../../ui';
 import { motion } from 'motion/react';
@@ -82,18 +83,18 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
   ];
 
   const steps = [
-    { n: '1', t: ar ? 'تخطيط القائمة والكميات' : 'Menu & volume planning', d: ar ? 'قوائم مناسبة لنوع المشروع وعدد المستفيدين والمواعيد.' : 'Menus matched to project, headcount & timing.', Icon: ClipboardList },
-    { n: '2', t: ar ? 'تحضير وفق معايير السلامة' : 'Prep to safety standards', d: ar ? 'تحكم في النظافة والجودة داخل المطابخ قبل التعبئة.' : 'Hygiene & quality control before packing.', Icon: ShieldCheck },
-    { n: '3', t: ar ? 'تعبئة وتحميل منضبط' : 'Controlled pack & load', d: ar ? 'نقاط تحميل واضحة وآليات تسليم تقلل التأخير في الذروة.' : 'Clear loading points minimizing peak delays.', Icon: Package },
+    { n: '1', t: ar ? 'تخطيط القائمة والكميات' : 'Menu & volume planning', d: ar ? 'قوائم مناسبة لنوع المشروع وعدد المستفيدين والمواعيد.' : 'Menus matched to project, headcount & timing.', Icon: Clipboard },
+    { n: '2', t: ar ? 'تحضير وفق معايير السلامة' : 'Prep to safety standards', d: ar ? 'تحكم في النظافة والجودة داخل المطابخ قبل التعبئة.' : 'Hygiene & quality control before packing.', Icon: FoodSafety },
+    { n: '3', t: ar ? 'تعبئة وتحميل منضبط' : 'Controlled pack & load', d: ar ? 'نقاط تحميل واضحة وآليات تسليم تقلل التأخير في الذروة.' : 'Clear loading points minimizing peak delays.', Icon: Packaging },
     { n: '4', t: ar ? 'توزيع ميداني' : 'Field distribution', d: ar ? 'فرق ومسارات تغطي مكة والمشاعر ومواقع الفعاليات.' : 'Teams & routes across Makkah, sites & events.', Icon: Truck },
-    { n: '5', t: ar ? 'توثيق ومتابعة الجودة' : 'Reporting & QA', d: ar ? 'متابعة مستمرة تعزز الثقة وتدعم المشاريع المتكررة.' : 'Continuous follow-up that builds repeat trust.', Icon: FileCheck },
+    { n: '5', t: ar ? 'توثيق ومتابعة الجودة' : 'Reporting & QA', d: ar ? 'متابعة مستمرة تعزز الثقة وتدعم المشاريع المتكررة.' : 'Continuous follow-up that builds repeat trust.', Icon: Report },
   ];
 
   const opsFacts = [
-    { Icon: BadgeCheck, t: ar ? 'موثوق ومعتمد' : 'Trusted & certified', s: ar ? 'من جهات حكومية وخاصة' : 'By government & private bodies' },
-    { Icon: Users, t: ar ? 'فريق متخصص' : 'Specialized team', s: ar ? 'أكثر من 350 موظف' : 'Over 350 staff' },
+    { Icon: Certified, t: ar ? 'موثوق ومعتمد' : 'Trusted & certified', s: ar ? 'من جهات حكومية وخاصة' : 'By government & private bodies' },
+    { Icon: Team, t: ar ? 'فريق متخصص' : 'Specialized team', s: ar ? 'أكثر من 350 موظف' : 'Over 350 staff' },
     { Icon: Truck, t: ar ? 'أسطول مجهز' : 'Equipped fleet', s: ar ? 'أكثر من 40 مركبة نقل' : 'Over 40 transport vehicles' },
-    { Icon: MapPin, t: ar ? 'تغطية شاملة' : 'Full coverage', s: ar ? 'مكة، المشاعر، والفعاليات' : 'Makkah, holy sites & events' },
+    { Icon: Locations, t: ar ? 'تغطية شاملة' : 'Full coverage', s: ar ? 'مكة، المشاعر، والفعاليات' : 'Makkah, holy sites & events' },
   ];
 
   const stripImages = ['03', '05', '07', '08', '09', '11', '12', '13', '14', '15', '16', '17'].map(IMG);

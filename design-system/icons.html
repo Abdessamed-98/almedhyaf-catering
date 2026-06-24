@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>نظام الأيقونات · المضياف العربي — Icon System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --maroon:#801212; --maroon-d:#590d0d; --gold:#F8C15D; --gold-d:#e0a23b;
+    --ink:#1D1D1B; --cream:#FAF7F2; --line:#eee1d0;
+    --isize:30px;        /* icon size */
+    --isw:1.75;          /* stroke width */
+    --icol:#801212;      /* icon color */
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--cream); color:var(--ink);
+    font-family:'Alexandria',system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+
+  /* ---- header ---- */
+  header{
+    background:
+      radial-gradient(120% 140% at 100% 0%, rgba(248,193,93,.18), transparent 55%),
+      linear-gradient(180deg,#fff,transparent);
+    border-bottom:1px solid var(--line);
+  }
+  .brandrow{display:flex;align-items:center;gap:14px;padding:26px 0 6px}
+  .mark{width:46px;height:46px;border-radius:14px;background:var(--maroon);
+    display:grid;place-items:center;color:var(--gold);box-shadow:0 8px 20px -8px rgba(128,18,18,.6)}
+  .mark svg{width:26px;height:26px}
+  .brandrow b{font-weight:800;font-size:18px;line-height:1.2}
+  .brandrow span{display:block;font-size:12px;color:#9a8e7c;font-weight:500}
+  h1{font-size:34px;font-weight:900;margin:14px 0 6px;color:var(--maroon-d)}
+  .sub{color:#6c6357;max-width:680px;line-height:1.8;margin:0 0 22px}
+  .kbd{font-family:ui-monospace,monospace;background:#fff;border:1px solid var(--line);
+    border-radius:7px;padding:1px 7px;font-size:12px;color:var(--maroon)}
+
+  /* ---- toolbar ---- */
+  .toolbar{position:sticky;top:0;z-index:20;background:rgba(250,247,242,.86);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .tools{display:flex;flex-wrap:wrap;gap:18px 26px;align-items:center;padding:14px 0}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:11px;font-weight:700;color:#9a8e7c;letter-spacing:.04em}
+  .search{flex:1;min-width:200px}
+  .search input{width:100%;height:40px;border:1px solid var(--line);background:#fff;border-radius:11px;
+    padding:0 40px 0 14px;font-family:inherit;font-size:14px;font-weight:600;color:var(--ink);outline:none}
+  .search .wrapInput{position:relative}
+  .search svg{position:absolute;top:9px;right:12px;width:20px;height:20px;color:var(--maroon)}
+  input[type=range]{accent-color:var(--maroon);width:130px}
+  .swatches{display:flex;gap:8px}
+  .sw{width:26px;height:26px;border-radius:50%;border:2px solid #fff;cursor:pointer;
+    box-shadow:0 0 0 1px var(--line);transition:transform .15s}
+  .sw:hover{transform:scale(1.12)}
+  .sw.active{box-shadow:0 0 0 2px var(--ink)}
+  .seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+  .seg button{border:0;background:transparent;font-family:inherit;font-weight:700;font-size:13px;
+    padding:8px 14px;cursor:pointer;color:#6c6357}
+  .seg button.active{background:var(--maroon);color:#fff}
+  .count{font-size:13px;color:#9a8e7c;font-weight:600}
+
+  /* ---- groups ---- */
+  main{padding:30px 0 80px}
+  .group{margin-top:34px}
+  .ghead{display:flex;align-items:baseline;gap:12px;margin:0 0 16px}
+  .ghead h2{font-size:20px;font-weight:800;color:var(--maroon-d);margin:0}
+  .ghead em{font-style:normal;font-size:12px;color:#9a8e7c;font-weight:600}
+  .ghead .rule{flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:14px}
+  .cell{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 10px 12px;
+    display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;
+    transition:border-color .15s, box-shadow .15s, transform .15s;text-align:center}
+  .cell:hover{border-color:var(--gold);box-shadow:0 10px 24px -14px rgba(128,18,18,.45);transform:translateY(-2px)}
+  .icowrap{height:46px;display:grid;place-items:center}
+  .icowrap svg{width:var(--isize);height:var(--isize);color:var(--icol);
+    stroke-width:var(--isw);transition:width .12s,height .12s}
+  .name{font-size:12px;font-weight:700;color:var(--ink);direction:ltr;word-break:break-word}
+  .ar{font-size:11px;color:#9a8e7c;font-weight:500}
+
+  /* dark preview */
+  body.dark{--cream:#17110f}
+  body.dark{color:#f3ece2}
+  body.dark .cell{background:#241a16;border-color:#3a2a24}
+  body.dark .ghead h2{color:var(--gold)}
+  body.dark .name{color:#f3ece2}
+  body.dark header,body.dark .toolbar{background:#1d1512;border-color:#3a2a24}
+  body.dark .search input,body.dark .seg{background:#241a16;border-color:#3a2a24;color:#f3ece2}
+
+  /* toast */
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;padding:11px 20px;border-radius:999px;font-weight:700;font-size:13px;
+    opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:0 12px 30px -8px rgba(0,0,0,.5)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .empty{text-align:center;color:#9a8e7c;padding:50px;font-weight:600}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brandrow">
+      <div class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18"/><path d="M5 18a7 7 0 0 1 14 0"/><path d="M12 11V8"/><circle cx="12" cy="6.6" r="1"/></svg>
+      </div>
+      <div>
+        <b>المضياف العربي · Al-Medhyaf</b>
+        <span>Design System — نظام التصميم</span>
+      </div>
+    </div>
+    <h1>نظام الأيقونات</h1>
+    <p class="sub">
+      مجموعة أيقونات خطّية موحّدة مصمّمة خصيصًا لهوية المضياف العربي — تغطّي الخدمات، الأطباق، الجودة والتشغيل، والواجهة.
+      كلها على شبكة <span class="kbd">24×24</span>، بنمط <span class="kbd">stroke</span> وأطراف دائرية، وتستخدم <span class="kbd">currentColor</span> فتتكيّف مع أي مقاس أو لون.
+      اضغط أي أيقونة لنسخ كود الـ SVG.
+    </p>
+  </div>
+
+  <div class="toolbar">
+    <div class="wrap tools">
+      <div class="field search">
+        <label>بحث · Search</label>
+        <div class="wrapInput">
+          <input id="q" placeholder="ابحث بالاسم… (kabsa, hajj, truck)" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        </div>
+      </div>
+      <div class="field">
+        <label>المقاس · Size <b id="sizeVal" style="color:var(--maroon)">30</b></label>
+        <input id="size" type="range" min="18" max="56" value="30" />
+      </div>
+      <div class="field">
+        <label>السماكة · Stroke <b id="swVal" style="color:var(--maroon)">1.75</b></label>
+        <input id="sw" type="range" min="1" max="2.6" step="0.05" value="1.75" />
+      </div>
+      <div class="field">
+        <label>اللون · Color</label>
+        <div class="swatches" id="swatches"></div>
+      </div>
+      <div class="field">
+        <label>المعاينة · Preview</label>
+        <div class="seg" id="bg">
+          <button data-bg="light" class="active">فاتح</button>
+          <button data-bg="dark">داكن</button>
+        </div>
+      </div>
+      <div class="field" style="margin-inline-start:auto">
+        <label>&nbsp;</label>
+        <div class="count"><b id="count">0</b> أيقونة</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+<div class="empty" id="empty" style="display:none">لا توجد أيقونة بهذا الاسم.</div>
+
+<div class="toast" id="toast">تم نسخ كود الـ SVG ✓</div>
+
+<script>
+/* ---------- icon data ----------
+   p = inner SVG markup. wrapper supplies stroke/fill/caps. */
+const GROUPS = [
+{
+  ar:'الخدمات', en:'Services', icons:[
+  {n:'hajj-umrah', ar:'الحج والعمرة', p:`<path d="M4 20h16"/><rect x="6" y="7" width="12" height="13" rx="1"/><path d="M6 11h12"/><path d="M11 20v-4h2v4"/><path d="M6 7l6-3 6 3"/>`},
+  {n:'hotels', ar:'الفنادق', p:`<path d="M4 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16"/><path d="M14 21V9h5a1 1 0 0 1 1 1v11"/><path d="M3 21h18"/><path d="M7 8h2M7 12h2M7 16h2M17 13h0M17 17h0"/>`},
+  {n:'banquets', ar:'الولائم', p:`<path d="M3 18h18"/><path d="M5 18a7 7 0 0 1 14 0"/><path d="M12 11V8.6"/><circle cx="12" cy="7.4" r="1"/>`},
+  {n:'buffets', ar:'البوفيهات', p:`<path d="M4 14h16l-1.2 5a1 1 0 0 1-1 .8H6.2a1 1 0 0 1-1-.8z"/><path d="M6 14a6 6 0 0 1 12 0"/><path d="M12 8V6"/><circle cx="12" cy="5" r="1"/><path d="M3 14h18"/>`},
+  {n:'events', ar:'الفعاليات', p:`<path d="M12 3L3 20h18z"/><path d="M12 3v17"/><path d="M12 20l-4.2-6M12 20l4.2-6"/>`},
+  {n:'iftar', ar:'إفطار الصائمين', p:`<path d="M9 4h6"/><path d="M10.5 4v2M13.5 4v2"/><rect x="7" y="6" width="10" height="12" rx="2.5"/><path d="M7 9.5h10M7 14.5h10"/><path d="M10 18v1.6h4V18"/><path d="M12 10.5c-1.1.9-1.4 2 0 2.9 1.4-.9 1.1-2 0-2.9z"/>`},
+  {n:'ramadan', ar:'رمضان', p:`<path d="M16.5 3a9 9 0 1 0 4.5 15A7 7 0 0 1 16.5 3z"/><path d="M19.5 5.2l.5 1.3 1.3.1-1 .9.3 1.3-1.1-.7-1.1.7.3-1.3-1-.9 1.3-.1z"/>`},
+  {n:'catering', ar:'الإعاشة', p:`<rect x="5" y="14.5" width="14" height="3" rx="1"/><rect x="6" y="10.5" width="12" height="3" rx="1"/><rect x="7" y="6.5" width="10" height="3" rx="1"/><path d="M5 17.5v.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-.5"/>`},
+]},
+{
+  ar:'الأطباق والمطبخ', en:'Cuisine', icons:[
+  {n:'kabsa', ar:'الكبسة', p:`<path d="M2.5 14h19"/><path d="M3.5 14a8.5 8.5 0 0 0 17 0"/><path d="M8 14a4 3 0 0 1 8 0"/><path d="M10 8.5c0 1 1 1 1 2M14 8.5c0 1 1 1 1 2"/>`},
+  {n:'mandi', ar:'المندي', p:`<path d="M16.5 4a4 4 0 0 0-6 5l-1 1-4.5 4.5a2 2 0 1 0 3 3L13 13l1-1a4 4 0 0 0 2.5-8z"/><path d="M5 19.5l-2 2"/>`},
+  {n:'grill', ar:'المشويات', p:`<line x1="4.5" y1="19.5" x2="19.5" y2="4.5"/><circle cx="9" cy="15" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="15" cy="9" r="2"/>`},
+  {n:'flame', ar:'لهب', p:`<path d="M12 3c3 3.5 5 5.5 5 8.8a5 5 0 0 1-10 0c0-1 .4-2 1.4-3 .5 1 1 1.4 1.6 1.4C9 8.8 11 6 12 3z"/>`},
+  {n:'mezze', ar:'المقبلات', p:`<path d="M3 12.5a3 3 0 0 0 6 0z"/><path d="M9.2 12.5a3 3 0 0 0 6 0z" transform="translate(.3 0)"/><path d="M15 12.5a3 3 0 0 0 6 0z"/><path d="M2.5 12.5h6.5M9 12.5h6.2M15 12.5h6.5"/>`},
+  {n:'sweets', ar:'الحلويات', p:`<path d="M3 18h18"/><path d="M5 18l7-9 7 9z"/><path d="M9 14.5c1 1 2 1 3 0s2-1 3 0"/><circle cx="12" cy="8" r="1"/>`},
+  {n:'drinks', ar:'المشروبات', p:`<path d="M6 8.5h12l-1.1 10.4a1 1 0 0 1-1 .9H8.1a1 1 0 0 1-1-.9z"/><path d="M5 8.5h14"/><path d="M14.5 8.5L16 4"/>`},
+  {n:'arabic-coffee', ar:'القهوة العربية', p:`<path d="M8.5 20a16 16 0 0 1 0-9h7a16 16 0 0 1 0 9z"/><path d="M9 20h6"/><path d="M9.6 11l1-2h2.8l1 2"/><path d="M12 9V6.6"/><path d="M10.8 6.1a1.6 1.6 0 1 0 2 1.4 1.3 1.3 0 0 1-2-1.4z"/><path d="M15 12.6c2 .2 3-1 3.4-3"/><path d="M8.5 13.2c-1.7.4-1.7 3 0 3.6"/>`},
+  {n:'dates', ar:'التمر', p:`<ellipse cx="11.5" cy="14" rx="3.4" ry="5"/><path d="M11.5 9c0-2.4 1.2-3.7 3.5-4.4"/><path d="M11.5 11.5v5"/>`},
+  {n:'tea', ar:'الشاي', p:`<path d="M8 5h8l-1 13.5a2 2 0 0 1-2 1.8h-2a2 2 0 0 1-2-1.8z"/><path d="M7.5 5h9"/><path d="M11 2.5c0 1 1 1.2 0 2.5M14 2.5c0 1 1 1.2 0 2.5"/>`},
+  {n:'chef-hat', ar:'الطهاة', p:`<path d="M6.5 13.5a3.6 3.6 0 0 1-1-7A4 4 0 0 1 12 5a4 4 0 0 1 6.5 1.5 3.6 3.6 0 0 1-1 7"/><path d="M7 13.5h10v4.5a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1z"/><path d="M9.5 16v1.5M14.5 16v1.5"/>`},
+  {n:'pot', ar:'القدر', p:`<path d="M5 9.5h14l-1 9a2 2 0 0 1-2 1.8H8a2 2 0 0 1-2-1.8z"/><path d="M3 11.5h2M19 11.5h2"/><path d="M4 9.5h16"/><path d="M11 6.5h2"/><path d="M12 6.5V5"/>`},
+  {n:'utensils', ar:'أدوات المائدة', p:`<path d="M7 3v18"/><path d="M5 3v4a2 2 0 0 0 4 0V3"/><path d="M17 21V3c-2 1.5-2.5 5-2.5 7.5H17"/>`},
+]},
+{
+  ar:'الجودة والتشغيل', en:'Quality & Operations', icons:[
+  {n:'food-safety', ar:'سلامة الغذاء', p:`<path d="M12 3l7 3v5c0 5-3 8.2-7 10-4-1.8-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/>`},
+  {n:'certified', ar:'معتمد (SFDA)', p:`<circle cx="12" cy="9" r="6"/><path d="M9.5 9l1.6 1.6L15 6.7"/><path d="M8.6 13.7L7 21l5-2.6L17 21l-1.6-7.3"/>`},
+  {n:'quality', ar:'الجودة', p:`<circle cx="12" cy="14.5" r="5"/><path d="M8.5 10L5.5 3M15.5 10l3-7M10 3l2 4 2-4"/><path d="M12 12.6l.8 1.6 1.7.2-1.2 1.2.3 1.7-1.6-.8-1.6.8.3-1.7L9.5 14.4l1.7-.2z"/>`},
+  {n:'hygiene', ar:'النظافة', p:`<path d="M12 3c4 5 6 7 6 10a6 6 0 0 1-12 0c0-3 2-5 6-10z"/><path d="M9.3 13l1.6 1.6L14.7 11"/>`},
+  {n:'temperature', ar:'حرارة الوجبات', p:`<path d="M14 14V5a2 2 0 0 0-4 0v9a4 4 0 1 0 4 0z"/><path d="M12 9v6"/>`},
+  {n:'fresh', ar:'طازج', p:`<path d="M5 19c0-8 6-13.5 14-13.5C19 13.5 13 19 5 19z"/><path d="M5 19c4-4 7.5-6.5 11-7.5"/>`},
+  {n:'halal', ar:'حلال', p:`<circle cx="12" cy="12" r="8.5"/><path d="M14.5 8.5a4.5 4.5 0 1 0 0 7 3.4 3.4 0 0 1 0-7z"/><path d="M16.5 9.5l.4 1 1 .1-.8.7.2 1-.8-.5-.9.5.2-1-.7-.7 1-.1z"/>`},
+  {n:'truck', ar:'الأسطول', p:`<path d="M3 6.5h11v9.5H3z"/><path d="M14 9.5h3.5l3 3v3.5H14z"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/><path d="M9 18h6"/>`},
+  {n:'scooter', ar:'مندوب التوصيل', p:`<circle cx="6" cy="17.5" r="2.5"/><circle cx="18" cy="17.5" r="2.5"/><path d="M6 17.5h7l3.2-7H19"/><path d="M13 10.5l-1 7"/><path d="M8.5 7.5H12l2 3"/>`},
+  {n:'packaging', ar:'التعبئة', p:`<path d="M12 3l8 4v9.5l-8 4-8-4V7z"/><path d="M4 7l8 4 8-4M12 11v9.5"/>`},
+  {n:'around-clock', ar:'على مدار الساعة', p:`<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/>`},
+  {n:'seasons', ar:'المواسم', p:`<rect x="4" y="5" width="16" height="15" rx="2.2"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/><path d="M8 13h2.4M13.5 13h2.5M8 16.5h2.4M13.5 16.5h2.5"/>`},
+  {n:'team', ar:'الفريق', p:`<circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 5.2a3.2 3.2 0 0 1 0 6.1"/><path d="M21 20a6 6 0 0 0-4.5-5.8"/>`},
+  {n:'locations', ar:'المواقع', p:`<path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/>`},
+  {n:'map', ar:'الخريطة', p:`<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>`},
+  {n:'distribution', ar:'التوزيع', p:`<circle cx="12" cy="5" r="2.2"/><circle cx="5" cy="19" r="2.2"/><circle cx="19" cy="19" r="2.2"/><path d="M12 7.2v3.3M11.4 11.5L6.2 17M12.6 11.5L17.8 17"/>`},
+]},
+{
+  ar:'الواجهة والتواصل', en:'Interface & Contact', icons:[
+  {n:'phone', ar:'هاتف', p:`<path d="M5 4h3.5l1.8 4.5-2.3 1.4a11 11 0 0 0 5 5l1.4-2.3 4.6 1.8V18a2 2 0 0 1-2 2A15.5 15.5 0 0 1 3 6a2 2 0 0 1 2-2z"/>`},
+  {n:'whatsapp', ar:'واتساب', p:`<path d="M3.5 20.5l1.4-4.1A8 8 0 1 1 8 19.2z"/><path d="M9 9.2c.2 3.3 2.3 5.4 5.6 5.7.8-.2 1.4-.8 1-1.6l-1.6-.9-1 1c-1-.5-1.7-1.2-2.2-2.2l1-1-.9-1.6c-.8-.4-1.7.1-1.9.9z"/>`},
+  {n:'email', ar:'بريد', p:`<rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 7l8.5 6 8.5-6"/>`},
+  {n:'location', ar:'موقع', p:`<path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/>`},
+  {n:'cart', ar:'عربة', p:`<circle cx="9" cy="20" r="1.6"/><circle cx="18" cy="20" r="1.6"/><path d="M3 4h2.2l2.4 11.4a1 1 0 0 0 1 .8h8.2a1 1 0 0 0 1-.8L20.5 8H6.2"/>`},
+  {n:'bag', ar:'حقيبة الطلب', p:`<path d="M6 8h12l1 12.2H5z"/><path d="M9 8a3 3 0 0 1 6 0"/>`},
+  {n:'search', ar:'بحث', p:`<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.2-4.2"/>`},
+  {n:'user', ar:'الحساب', p:`<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>`},
+  {n:'heart', ar:'المفضلة', p:`<path d="M12 20.5C5.5 16 3 12.2 3 8.7A4.6 4.6 0 0 1 12 6.2a4.6 4.6 0 0 1 9 2.5c0 3.5-2.5 7.3-9 11.8z"/>`},
+  {n:'star', ar:'تقييم', p:`<path d="M12 3.2l2.6 5.6 6.1.7-4.5 4.3 1.2 6.1L12 17l-5.4 2.9 1.2-6.1L3.3 9.5l6.1-.7z"/>`},
+  {n:'loyalty', ar:'نقاط الولاء', p:`<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M4 13h16M12 9v11"/><path d="M12 9C9.5 9 8 8 8 6.6 8 5.5 9 5 12 9zM12 9c2.5 0 4-1 4-2.4C16 5.5 15 5 12 9z"/>`},
+  {n:'menu', ar:'القائمة', p:`<path d="M4 7h16M4 12h16M4 17h16"/>`},
+  {n:'globe', ar:'اللغة', p:`<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c3 2.6 3 14.4 0 17M12 3.5c-3 2.6-3 14.4 0 17"/>`},
+  {n:'chevron', ar:'سهم', p:`<path d="M14.5 6l-6 6 6 6"/>`},
+  {n:'plus', ar:'إضافة', p:`<path d="M12 5v14M5 12h14"/>`},
+  {n:'minus', ar:'إنقاص', p:`<path d="M5 12h14"/>`},
+  {n:'check', ar:'تأكيد', p:`<path d="M5 12.5l4.5 4.5L20 6.5"/>`},
+]},
+];
+
+const SW='1.75';
+function svg(p){
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${SW}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+}
+
+const main=document.getElementById('main');
+let total=0;
+const all=[];
+GROUPS.forEach(g=>{
+  const sec=document.createElement('section');
+  sec.className='group';
+  sec.innerHTML=`<div class="ghead"><h2>${g.ar}</h2><em>${g.en}</em><span class="rule"></span></div>`;
+  const grid=document.createElement('div');
+  grid.className='grid';
+  g.icons.forEach(ic=>{
+    total++;
+    const cell=document.createElement('div');
+    cell.className='cell';
+    cell.dataset.key=(ic.n+' '+ic.ar).toLowerCase();
+    cell.innerHTML=`<div class="icowrap">${svg(ic.p)}</div><div class="name">${ic.n}</div><div class="ar">${ic.ar}</div>`;
+    cell.addEventListener('click',()=>copy(ic,cell));
+    grid.appendChild(cell);
+    all.push(cell);
+  });
+  sec.appendChild(grid);
+  main.appendChild(sec);
+});
+document.getElementById('count').textContent=total;
+
+/* copy svg */
+const toast=document.getElementById('toast');
+let tt;
+function copy(ic,cell){
+  const markup=cell.querySelector('svg').outerHTML;
+  navigator.clipboard?.writeText(markup).then(()=>{
+    toast.textContent=`نُسخ ‹${ic.n}› ✓`;
+    toast.classList.add('show');
+    clearTimeout(tt); tt=setTimeout(()=>toast.classList.remove('show'),1400);
+  });
+}
+
+/* controls */
+const root=document.documentElement.style;
+const size=document.getElementById('size'), sw=document.getElementById('sw');
+size.addEventListener('input',()=>{root.setProperty('--isize',size.value+'px');document.getElementById('sizeVal').textContent=size.value;});
+sw.addEventListener('input',()=>{root.setProperty('--isw',sw.value);document.getElementById('swVal').textContent=(+sw.value).toFixed(2);});
+
+const COLORS=[['#801212','ماروني'],['#F8C15D','ذهبي'],['#1D1D1B','حبر'],['#6c6357','رمادي']];
+const swatches=document.getElementById('swatches');
+COLORS.forEach(([c],i)=>{
+  const b=document.createElement('div');
+  b.className='sw'+(i===0?' active':'');
+  b.style.background=c;
+  b.addEventListener('click',()=>{
+    root.setProperty('--icol',c);
+    [...swatches.children].forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+  });
+  swatches.appendChild(b);
+});
+
+document.getElementById('bg').addEventListener('click',e=>{
+  const btn=e.target.closest('button'); if(!btn)return;
+  document.body.classList.toggle('dark',btn.dataset.bg==='dark');
+  [...e.currentTarget.children].forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+  /* in dark mode, default icon color → gold for legibility */
+  if(btn.dataset.bg==='dark' && getComputedStyle(document.documentElement).getPropertyValue('--icol').trim().startsWith('#801')){
+    root.setProperty('--icol','#F8C15D');
+    [...swatches.children].forEach((x,i)=>x.classList.toggle('active',i===1));
+  }
+});
+
+/* search */
+const q=document.getElementById('q'), empty=document.getElementById('empty');
+q.addEventListener('input',()=>{
+  const t=q.value.trim().toLowerCase();
+  let shown=0;
+  all.forEach(c=>{const ok=!t||c.dataset.key.includes(t);c.style.display=ok?'':'none';if(ok)shown++;});
+  document.querySelectorAll('.group').forEach(g=>{
+    const any=[...g.querySelectorAll('.cell')].some(c=>c.style.display!=='none');
+    g.style.display=any?'':'none';
+  });
+  empty.style.display=shown?'none':'block';
+  document.getElementById('count').textContent=shown;
+});
+</script>
+</body>
+</html>

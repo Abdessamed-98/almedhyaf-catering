@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WebsitePage } from '../../types';
-import { Menu, X, Phone, Facebook, Instagram, Twitter, MapPin, Globe, ShieldCheck, Award } from 'lucide-react';
+import { Menu, X, Facebook, Instagram, Twitter } from 'lucide-react';
+import { Phone, Location, Globe, FoodSafety, Quality } from '../../components/icons';
 import Logo from '../../components/Logo';
 import ChatBot from '../../components/ChatBot';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -75,7 +76,7 @@ const WebsiteLayout: React.FC<WebsiteLayoutProps> = ({ onBackToPortal, onOrderNo
         <div className="container mx-auto flex justify-between items-center text-sm">
           <div className="flex items-center gap-6">
             <span className="flex items-center gap-2" dir="ltr"><Phone className="w-4 h-4" /> 0570165050</span>
-            <span className="flex items-center gap-2"><MapPin className="w-4 h-4" /> {language === 'ar' ? 'مكة المكرمة، المملكة العربية السعودية' : 'Makkah, Saudi Arabia'}</span>
+            <span className="flex items-center gap-2"><Location className="w-4 h-4" /> {language === 'ar' ? 'مكة المكرمة، المملكة العربية السعودية' : 'Makkah, Saudi Arabia'}</span>
           </div>
           <div className="flex items-center gap-4">
              <button onClick={toggleLanguage} className="text-gray-300 hover:text-white flex items-center gap-1 transition-colors">
@@ -223,7 +224,7 @@ const WebsiteLayout: React.FC<WebsiteLayoutProps> = ({ onBackToPortal, onOrderNo
                 <span dir="ltr">0570165050</span>
               </li>
               <li className="flex items-center gap-3 text-brand-100/70">
-                <MapPin className="w-5 h-5 text-secondary-400" />
+                <Location className="w-5 h-5 text-secondary-400" />
                 <span>{language === 'ar' ? 'مكة المكرمة، المملكة العربية السعودية' : 'Makkah, Saudi Arabia'}</span>
               </li>
               <li className="flex items-center gap-3 text-brand-100/70">
@@ -239,14 +240,14 @@ const WebsiteLayout: React.FC<WebsiteLayoutProps> = ({ onBackToPortal, onOrderNo
             <p className="text-brand-100/70 mb-4 text-sm">{language === 'ar' ? 'نلتزم بأعلى معايير سلامة الغذاء، معتمدون من HACCP والهيئة العامة للغذاء والدواء (SFDA).' : 'Committed to the highest food-safety standards — certified by HACCP and the Saudi Food & Drug Authority (SFDA).'}</p>
             <div className="flex flex-col gap-3">
                 <div className="bg-white/5 flex items-center gap-3 p-3 px-4 rounded-lg border border-white/10">
-                    <ShieldCheck className="w-6 h-6 text-secondary-400 shrink-0" />
+                    <FoodSafety className="w-6 h-6 text-secondary-400 shrink-0" />
                     <div className="text-start">
                         <div className="text-[10px] uppercase text-brand-100/60">{language === 'ar' ? 'معتمد' : 'Certified'}</div>
                         <div className="font-bold leading-none">HACCP</div>
                     </div>
                 </div>
                 <div className="bg-white/5 flex items-center gap-3 p-3 px-4 rounded-lg border border-white/10">
-                    <Award className="w-6 h-6 text-secondary-400 shrink-0" />
+                    <Quality className="w-6 h-6 text-secondary-400 shrink-0" />
                     <div className="text-start">
                         <div className="text-[10px] uppercase text-brand-100/60">{language === 'ar' ? 'مرخّص من' : 'Licensed by'}</div>
                         <div className="font-bold leading-none">SFDA</div>
