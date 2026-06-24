@@ -16,58 +16,50 @@ const fadeUp = {
 
 const IMG = (n: string) => `concept/${n}.jpg`;
 
-// Artistic story showcase — a 3D card that flips on the Y-axis every few seconds
-// to reveal the next photo. Both faces are framed; the incoming photo is loaded
-// onto the hidden face before the flip so it's ready as it swings into view.
+// Artistic story showcase — a fanned deck of framed photos. Every few seconds the
+// front card tucks to the back and the whole stack shuffles forward (the cards
+// cycle their POSITION/rotation, like riffling through a deck of cards).
 const STORY_SHOTS = ['16', '15', '12', '13', '10', '08'];
-const len = STORY_SHOTS.length;
-const shot = (n: number) => IMG(STORY_SHOTS[((n % len) + len) % len]);
+const N = STORY_SHOTS.length;
 
-const Face: React.FC<{ src: string; back?: boolean }> = ({ src, back }) => (
-  <div className={`absolute inset-0 rounded-[2rem] overflow-hidden border-8 border-white shadow-2xl shadow-brand-900/15 [backface-visibility:hidden] ${back ? '[transform:rotateY(180deg)]' : ''}`}>
-    <img src={src} alt="" className="w-full h-full object-cover" />
-    <span className="absolute inset-0 bg-gradient-to-t from-ink/45 via-transparent to-transparent" />
-  </div>
-);
+// fan position by depth in the deck (0 = front card)
+const SLOT = (d: number) => {
+  if (d === 0) return { x: 0, y: 0, r: -3, s: 1, z: 50, o: 1 };   // front, centered
+  if (d === 1) return { x: -32, y: 4, r: -14, s: 0.94, z: 40, o: 1 }; // peeking left
+  if (d === 2) return { x: 32, y: 6, r: 13, s: 0.92, z: 30, o: 1 };   // peeking right
+  return { x: 0, y: 0, r: -3, s: 0.85, z: 0, o: 0 };               // tucked behind, hidden
+};
 
 const StoryGallery: React.FC = () => {
-  const [n, setN] = useState(0); // tick — also the index of the photo now facing front-or-back
+  const [active, setActive] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setN(v => v + 1), 3000);
+    const id = setInterval(() => setActive(v => (v + 1) % N), 3000);
     return () => clearInterval(id);
   }, []);
 
-  // n even → front face is showing photo n; n odd → back face is showing photo n.
-  const frontImg = shot(n % 2 === 0 ? n : n - 1);
-  const backImg = shot(n % 2 === 0 ? n - 1 : n);
-
   return (
-    <div className="relative">
-      {/* soft brand glows behind the frame */}
-      <div className="absolute -top-8 -right-6 w-32 h-32 rounded-full bg-secondary-400/30 blur-3xl" />
-      <div className="absolute -bottom-10 -left-8 w-36 h-36 rounded-full bg-brand-600/10 blur-3xl" />
+    <div className="relative mx-auto w-full max-w-sm aspect-square">
+      {/* soft brand glow behind the deck */}
+      <div className="absolute inset-8 rounded-full bg-secondary-400/15 blur-3xl" />
 
-      {/* perspective stage */}
-      <div className="relative aspect-[4/5] sm:aspect-square [perspective:1600px]">
-        {/* the flipping card */}
-        <div
-          className="absolute inset-0 [transform-style:preserve-3d] transition-transform duration-[1000ms] ease-in-out"
-          style={{ transform: `rotateY(${n * 180}deg)` }}
-        >
-          <Face src={frontImg} />
-          <Face src={backImg} back />
-        </div>
-
-        {/* static overlays (don't flip with the card) */}
-        <span className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-secondary-400/95 backdrop-blur flex items-center justify-center shadow-lg pointer-events-none">
-          <span className="w-2 h-2 rotate-45 bg-ink" />
-        </span>
-        <div className="absolute bottom-5 inset-x-0 z-10 flex justify-center gap-1.5 pointer-events-none">
-          {STORY_SHOTS.map((_, idx) => (
-            <span key={idx} className={`h-1.5 rounded-full transition-all duration-500 ${idx === ((n % len) + len) % len ? 'w-7 bg-secondary-400' : 'w-1.5 bg-white/70'}`} />
-          ))}
-        </div>
-      </div>
+      {STORY_SHOTS.map((n, i) => {
+        const d = (i - active + N) % N;
+        const p = SLOT(d);
+        return (
+          <div
+            key={n}
+            className="absolute left-1/2 top-1/2 w-[52%] aspect-[3/5] rounded-3xl overflow-hidden border-[7px] border-white shadow-2xl shadow-brand-900/30 transition-all duration-700 ease-out"
+            style={{
+              transform: `translate(-50%, -50%) translate(${p.x}%, ${p.y}%) rotate(${p.r}deg) scale(${p.s})`,
+              zIndex: p.z,
+              opacity: p.o,
+            }}
+          >
+            <img src={IMG(n)} alt="" className="w-full h-full object-cover" />
+            <span className="absolute inset-0 bg-gradient-to-t from-ink/35 to-transparent" />
+          </div>
+        );
+      })}
     </div>
   );
 };
