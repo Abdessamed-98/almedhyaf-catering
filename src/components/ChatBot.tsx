@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, X, Send, Bot } from 'lucide-react';
+import { X, Send, Bot } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const ChatBot: React.FC = () => {
@@ -24,13 +24,42 @@ const ChatBot: React.FC = () => {
 
   return (
     <>
-      {/* Floating Button */}
+      {/* Floating Button — animated assistant robot */}
       <button
         onClick={() => setIsOpen(true)}
         aria-label={t('chat_title')}
-        className={`fixed bottom-6 end-6 z-50 p-4 rounded-full shadow-lg transition-transform hover:scale-110 ${isOpen ? 'hidden' : 'bg-brand-600 text-white'}`}
+        className={`group fixed bottom-6 end-6 z-50 grid place-items-center w-16 h-16 rounded-full ring-4 ring-white/70 shadow-xl shadow-brand-900/35 bg-gradient-to-br from-brand-500 via-brand-600 to-brand-800 text-white transition-transform hover:scale-110 active:scale-95 ${isOpen ? 'hidden' : ''}`}
       >
-        <MessageSquare className="w-8 h-8" />
+        {/* attention pulse */}
+        <span className="absolute inset-0 rounded-full bg-brand-500 opacity-40 animate-ping" />
+        {/* online dot */}
+        <span className="absolute -top-0.5 -end-0.5 w-3.5 h-3.5 rounded-full bg-green-400 ring-2 ring-white" />
+        {/* robot */}
+        <span className="robo-bob relative">
+          <svg viewBox="0 0 48 48" className="w-9 h-9 drop-shadow-sm" fill="none">
+            {/* antenna */}
+            <line x1="24" y1="6.5" x2="24" y2="11" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" />
+            <circle className="robo-antenna" cx="24" cy="5" r="2.6" fill="#F8C15D" />
+            {/* head */}
+            <rect x="9" y="11" width="30" height="24" rx="8" fill="#fff" />
+            {/* side headphones */}
+            <rect x="4.5" y="18" width="4.5" height="10" rx="2.25" fill="#F8C15D" />
+            <rect x="39" y="18" width="4.5" height="10" rx="2.25" fill="#F8C15D" />
+            {/* eyes (blink) */}
+            <g className="robo-eyes" fill="#801212">
+              <circle cx="18" cy="22" r="3" />
+              <circle cx="30" cy="22" r="3" />
+            </g>
+            {/* eye shine */}
+            <circle cx="19.1" cy="20.9" r="0.9" fill="#fff" />
+            <circle cx="31.1" cy="20.9" r="0.9" fill="#fff" />
+            {/* smile */}
+            <path d="M18.5 28c1.8 1.8 9.2 1.8 11 0" stroke="#801212" strokeWidth="2" strokeLinecap="round" />
+            {/* cheeks */}
+            <circle cx="14.5" cy="27" r="1.5" fill="#F8C15D" opacity="0.85" />
+            <circle cx="33.5" cy="27" r="1.5" fill="#F8C15D" opacity="0.85" />
+          </svg>
+        </span>
       </button>
 
       {/* Chat Window */}
