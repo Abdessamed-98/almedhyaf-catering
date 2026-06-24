@@ -184,17 +184,19 @@ const WebsiteLayout: React.FC<WebsiteLayoutProps> = ({ onBackToPortal, onOrderNo
       <ChatBot />
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12 relative">
+      <footer className="bg-brand-900 text-white py-12 relative">
+        {/* gold hairline accent at the very top */}
+        <span className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-secondary-500 to-transparent" />
         <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
           {/* Brand Info */}
           <div>
             <Logo variant="light" className="mb-6" />
-            <p className="text-gray-400 leading-relaxed mb-6">
+            <p className="text-brand-100/70 leading-relaxed mb-6">
               {t('footer_desc')}
             </p>
             <div className="flex gap-4">
                 {SOCIAL_LINKS.map(({ label, href, Icon }) => (
-                  <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-brand-600 transition-colors">
+                  <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-secondary-500 hover:text-ink transition-colors">
                     <Icon className="w-5 h-5"/>
                   </a>
                 ))}
@@ -203,29 +205,29 @@ const WebsiteLayout: React.FC<WebsiteLayoutProps> = ({ onBackToPortal, onOrderNo
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-xl font-bold mb-6 text-brand-500">{t('quick_links')}</h3>
+            <h3 className="text-xl font-bold mb-6 text-secondary-400">{t('quick_links')}</h3>
             <ul className="space-y-3">
-              <li><button onClick={() => setActivePage('MENU')} className="text-gray-400 hover:text-white transition-colors">{t('nav_menu')}</button></li>
-              <li><button onClick={() => setActivePage('BRANCHES')} className="text-gray-400 hover:text-white transition-colors">{t('nav_branches')}</button></li>
-              <li><button onClick={() => setActivePage('CAREERS')} className="text-gray-400 hover:text-white transition-colors">{t('nav_careers')}</button></li>
-              <li><button onClick={() => setActivePage('NEWS')} className="text-gray-400 hover:text-white transition-colors">{t('nav_news')}</button></li>
+              <li><button onClick={() => setActivePage('MENU')} className="text-brand-100/70 hover:text-white transition-colors">{t('nav_menu')}</button></li>
+              <li><button onClick={() => setActivePage('BRANCHES')} className="text-brand-100/70 hover:text-white transition-colors">{t('nav_branches')}</button></li>
+              <li><button onClick={() => setActivePage('CAREERS')} className="text-brand-100/70 hover:text-white transition-colors">{t('nav_careers')}</button></li>
+              <li><button onClick={() => setActivePage('NEWS')} className="text-brand-100/70 hover:text-white transition-colors">{t('nav_news')}</button></li>
             </ul>
           </div>
 
           {/* Contact */}
           <div>
-            <h3 className="text-xl font-bold mb-6 text-brand-500">{t('contact_us')}</h3>
+            <h3 className="text-xl font-bold mb-6 text-secondary-400">{t('contact_us')}</h3>
             <ul className="space-y-4">
-              <li className="flex items-center gap-3 text-gray-400">
-                <Phone className="w-5 h-5 text-brand-500" />
+              <li className="flex items-center gap-3 text-brand-100/70">
+                <Phone className="w-5 h-5 text-secondary-400" />
                 <span dir="ltr">0570165050</span>
               </li>
-              <li className="flex items-center gap-3 text-gray-400">
-                <MapPin className="w-5 h-5 text-brand-500" />
+              <li className="flex items-center gap-3 text-brand-100/70">
+                <MapPin className="w-5 h-5 text-secondary-400" />
                 <span>{language === 'ar' ? 'مكة المكرمة، المملكة العربية السعودية' : 'Makkah, Saudi Arabia'}</span>
               </li>
-              <li className="flex items-center gap-3 text-gray-400">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <li className="flex items-center gap-3 text-brand-100/70">
+                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                 <span>{language === 'ar' ? 'خدمة الإعاشة على مدار الساعة' : 'Catering service around the clock'}</span>
               </li>
             </ul>
@@ -233,20 +235,20 @@ const WebsiteLayout: React.FC<WebsiteLayoutProps> = ({ onBackToPortal, onOrderNo
 
           {/* Certifications & Partnership */}
           <div>
-            <h3 className="text-xl font-bold mb-6 text-brand-500">{language === 'ar' ? 'اعتماداتنا' : 'Our Certifications'}</h3>
-            <p className="text-gray-400 mb-4 text-sm">{language === 'ar' ? 'نلتزم بأعلى معايير سلامة الغذاء، معتمدون من HACCP والهيئة العامة للغذاء والدواء (SFDA).' : 'Committed to the highest food-safety standards — certified by HACCP and the Saudi Food & Drug Authority (SFDA).'}</p>
+            <h3 className="text-xl font-bold mb-6 text-secondary-400">{language === 'ar' ? 'اعتماداتنا' : 'Our Certifications'}</h3>
+            <p className="text-brand-100/70 mb-4 text-sm">{language === 'ar' ? 'نلتزم بأعلى معايير سلامة الغذاء، معتمدون من HACCP والهيئة العامة للغذاء والدواء (SFDA).' : 'Committed to the highest food-safety standards — certified by HACCP and the Saudi Food & Drug Authority (SFDA).'}</p>
             <div className="flex flex-col gap-3">
-                <div className="bg-gray-800 flex items-center gap-3 p-3 px-4 rounded-lg border border-gray-700">
-                    <ShieldCheck className="w-6 h-6 text-brand-500 shrink-0" />
+                <div className="bg-white/5 flex items-center gap-3 p-3 px-4 rounded-lg border border-white/10">
+                    <ShieldCheck className="w-6 h-6 text-secondary-400 shrink-0" />
                     <div className="text-start">
-                        <div className="text-[10px] uppercase text-gray-400">{language === 'ar' ? 'معتمد' : 'Certified'}</div>
+                        <div className="text-[10px] uppercase text-brand-100/60">{language === 'ar' ? 'معتمد' : 'Certified'}</div>
                         <div className="font-bold leading-none">HACCP</div>
                     </div>
                 </div>
-                <div className="bg-gray-800 flex items-center gap-3 p-3 px-4 rounded-lg border border-gray-700">
-                    <Award className="w-6 h-6 text-brand-500 shrink-0" />
+                <div className="bg-white/5 flex items-center gap-3 p-3 px-4 rounded-lg border border-white/10">
+                    <Award className="w-6 h-6 text-secondary-400 shrink-0" />
                     <div className="text-start">
-                        <div className="text-[10px] uppercase text-gray-400">{language === 'ar' ? 'مرخّص من' : 'Licensed by'}</div>
+                        <div className="text-[10px] uppercase text-brand-100/60">{language === 'ar' ? 'مرخّص من' : 'Licensed by'}</div>
                         <div className="font-bold leading-none">SFDA</div>
                     </div>
                 </div>
@@ -254,7 +256,7 @@ const WebsiteLayout: React.FC<WebsiteLayoutProps> = ({ onBackToPortal, onOrderNo
           </div>
         </div>
 
-        <div className="border-t border-gray-800 pt-8 text-center text-gray-500 text-sm">
+        <div className="border-t border-white/10 pt-8 text-center text-brand-100/60 text-sm">
           {t('rights_reserved')} &copy; {new Date().getFullYear()}
         </div>
       </footer>
