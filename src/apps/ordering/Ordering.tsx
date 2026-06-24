@@ -173,6 +173,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
   const [notificationsOn, setNotificationsOn] = useState(true);
   const [searchQuery, setSearchQuery] = useState(''); // menu search (header)
   const [scrolled, setScrolled] = useState(false); // scroll-aware header
+  const [activeCat, setActiveCat] = useState('الكل'); // menu category filter (lifted out of MenuScreen)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -1230,7 +1231,6 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
 
   const MenuScreen = () => {
      const categories = Array.from(new Set(MOCK_PRODUCTS.map(p => p.category)));
-     const [activeCat, setActiveCat] = useState('الكل');
 
      const BANNERS = [
         { id: 1, title: language === 'ar' ? 'عرض الغداء' : 'Lunch Offer', subtitle: language === 'ar' ? 'خصم 20% على جميع الكبسات' : '20% OFF on all Kabsa', image: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=800' },
@@ -1260,7 +1260,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
             </div>
 
             {/* Category tabs (editorial underline) */}
-            <div className="flex gap-7 overflow-x-auto no-scrollbar mb-6 sticky top-[112px] z-10 bg-pageBg/95 backdrop-blur pt-2 -mx-4 px-4 border-b border-gray-100">
+            <div className={`flex gap-7 overflow-x-auto no-scrollbar mb-6 sticky top-[58px] z-30 backdrop-blur pt-2.5 pb-0 -mx-4 px-4 border-b transition-colors ${scrolled ? 'bg-white/95 border-gray-100' : 'bg-pageBg/95 border-transparent'}`}>
                 {[{ id: 'الكل', label: language === 'ar' ? 'الكل' : 'All' }, ...categories.map(c => ({ id: c, label: c }))].map(cat => {
                     const isActive = activeCat === cat.id;
                     return (
@@ -1703,29 +1703,31 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
       <div className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm' : 'bg-pageBg'}`}>
           <div className="container mx-auto max-w-2xl px-4 pt-2.5 pb-2.5">
 
-              {/* Line 1 — branch + order-type */}
-              <div className="flex items-center justify-between gap-3">
-                  <button className="flex items-center gap-2 shrink-0 text-start" onClick={() => setShowBranchModal(true)}>
-                      <MapPin className="w-5 h-5 text-brand-600 shrink-0" />
-                      <span className="font-bold text-sm text-gray-900 flex items-center gap-1 truncate max-w-[42vw]">
-                          {selectedBranch ? selectedBranch.name : t('ord_locating')}
-                          <ChevronDown className="w-3.5 h-3.5 shrink-0 text-gray-400" />
-                      </span>
-                  </button>
+              {/* Line 1 — branch + order-type (collapses on scroll) */}
+              <div className={`overflow-hidden transition-all duration-300 ${scrolled ? 'max-h-0 opacity-0' : 'max-h-14 opacity-100'}`}>
+                  <div className="flex items-center justify-between gap-3 pb-0.5">
+                      <button className="flex items-center gap-2 shrink-0 text-start" onClick={() => setShowBranchModal(true)}>
+                          <MapPin className="w-5 h-5 text-brand-600 shrink-0" />
+                          <span className="font-bold text-sm text-gray-900 flex items-center gap-1 truncate max-w-[42vw]">
+                              {selectedBranch ? selectedBranch.name : t('ord_locating')}
+                              <ChevronDown className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                          </span>
+                      </button>
 
-                  <button
-                    onClick={() => setShowOrderTypeModal(true)}
-                    className="flex items-center gap-2 bg-secondary-500 text-ink px-3.5 py-2 rounded-full font-bold shrink-0 shadow-sm hover:bg-secondary-600 transition-colors"
-                  >
-                      {React.createElement(getOrderTypeIcon(orderType), { className: "w-4 h-4" })}
-                      <span className="text-xs">{getOrderTypeLabel(orderType)}</span>
-                      <ChevronDown className="w-3.5 h-3.5" />
-                  </button>
+                      <button
+                        onClick={() => setShowOrderTypeModal(true)}
+                        className="flex items-center gap-2 bg-secondary-500 text-ink px-3.5 py-2 rounded-full font-bold shrink-0 shadow-sm hover:bg-secondary-600 transition-colors"
+                      >
+                          {React.createElement(getOrderTypeIcon(orderType), { className: "w-4 h-4" })}
+                          <span className="text-xs">{getOrderTypeLabel(orderType)}</span>
+                          <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                  </div>
               </div>
 
               {/* Line 2 — search (menu only) */}
               {activeTab === 'HOME' && (
-                <div className="relative mt-2.5">
+                <div className={`relative transition-all duration-300 ${scrolled ? 'mt-0' : 'mt-2.5'}`}>
                     <input
                         type="text"
                         value={searchQuery}
