@@ -16,62 +16,79 @@ import { BRAND } from '../../theme/tokens';
 import { useToast } from '../../ui';
 import { motion } from 'motion/react';
 
-// Mock Data
+// Mock Data — menu aligned with an Arab/Saudi catering kitchen (Makkah).
+// Reusable modifier groups
+const RICE_CHOICE = { id: 1, name: 'نوع الرز', min: 1, max: 1, options: [
+  { id: 101, name: 'بشاور (أبيض)', price: 0 },
+  { id: 102, name: 'شعبي (أحمر)', price: 0 },
+  { id: 103, name: 'أرز بخاري', price: 4 },
+] };
+const PORTION = { id: 4, name: 'الحجم', min: 1, max: 1, options: [
+  { id: 401, name: 'فردي', price: 0 },
+  { id: 402, name: 'عائلي (يكفي 4)', price: 95 },
+  { id: 403, name: 'وليمة (يكفي 8)', price: 210 },
+] };
+const TOPPINGS = { id: 2, name: 'إضافات', min: 0, max: 5, options: [
+  { id: 201, name: 'صنوبر زيادة', price: 6 },
+  { id: 202, name: 'مكسرات محمّصة', price: 5 },
+  { id: 203, name: 'بصل مقلي', price: 3 },
+  { id: 204, name: 'زبيب', price: 2 },
+] };
+const SPICE = { id: 3, name: 'درجة الحرارة', min: 1, max: 1, options: [
+  { id: 301, name: 'عادي', price: 0 },
+  { id: 302, name: 'حار', price: 0 },
+] };
+const GRILL_SIDES = { id: 5, name: 'الإضافات الجانبية', min: 0, max: 3, options: [
+  { id: 501, name: 'كمّاج زيادة', price: 3 },
+  { id: 502, name: 'صلصة ثوم', price: 3 },
+  { id: 503, name: 'حمص جانبي', price: 6 },
+] };
+
 const MOCK_PRODUCTS: Product[] = [
-  {
-    id: 1,
-    name: 'كبسة لحم نعيمي',
-    description: 'لحم نعيمي بلدي طازج مع رز بشاور فاخر ومكسرات',
-    price: 65,
-    category: 'كبسة',
-    calories: 1200,
-    image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&q=80&w=400',
-    modifiers: [
-      {
-        id: 1, name: 'نوع الرز', min: 1, max: 1, options: [
-          { id: 101, name: 'بشاور (ابيض)', price: 0 },
-          { id: 102, name: 'شعبي (احمر)', price: 0 }
-        ]
-      },
-      {
-        id: 2, name: 'إضافات', min: 0, max: 5, options: [
-          { id: 201, name: 'صنوبر زيادة', price: 5 },
-          { id: 202, name: 'بصل مقلي', price: 3 },
-          { id: 203, name: 'زبيب', price: 2 }
-        ]
-      }
-    ]
-  },
-  {
-    id: 2,
-    name: 'نصف دجاجة شواية',
-    description: 'دجاج محمر بالخلطة السرية مع اختيارك من الرز',
-    price: 22,
-    category: 'دجاج',
-    calories: 850,
-    image: 'https://images.unsplash.com/photo-1627308595229-7830a5c91f9f?auto=format&fit=crop&q=80&w=400',
-    modifiers: [
-       { id: 1, name: 'نوع الرز', min: 1, max: 1, options: [{id: 101, name: 'ابيض', price: 0}, {id: 102, name: 'احمر', price: 0}] }
-    ]
-  },
-  {
-    id: 3,
-    name: 'جريش أحمر',
-    description: 'جريش قصيمي مطبوخ باللبن واللحم',
-    price: 18,
-    category: 'شعبيات',
-    calories: 400,
-    image: 'https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&q=80&w=400'
-  },
-   {
-    id: 4,
-    name: 'سلطة خضراء',
-    description: 'خضروات موسمية طازجة مع زيت زيتون',
-    price: 12,
-    category: 'مقبلات',
-    calories: 120,
-    image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=400'
-  },
+  // ── كبسة ومندي ──────────────────────────────
+  { id: 1, name: 'كبسة لحم نعيمي', description: 'لحم نعيمي بلدي طازج على رز بشاور فاخر ومكسرات محمّصة', price: 65, category: 'كبسة ومندي', calories: 1200, image: 'dishes/main-1.jpg', modifiers: [RICE_CHOICE, PORTION, TOPPINGS] },
+  { id: 2, name: 'كبسة دجاج', description: 'دجاج محمّر بالبهارات السعودية على رز متبّل', price: 38, category: 'كبسة ومندي', calories: 950, image: 'dishes/main-5.jpg', modifiers: [RICE_CHOICE, PORTION, TOPPINGS] },
+  { id: 3, name: 'مندي لحم', description: 'لحم مدخّن في التنّور حتى الطراوة على أرز مندي معطّر', price: 72, category: 'كبسة ومندي', calories: 1250, image: 'dishes/main-4.jpg', modifiers: [PORTION, TOPPINGS] },
+  { id: 4, name: 'مندي دجاج', description: 'ربع دجاج مدخّن بنكهة الفحم الأصيلة على أرز مندي', price: 40, category: 'كبسة ومندي', calories: 900, image: 'dishes/main-6.jpg', modifiers: [PORTION, TOPPINGS] },
+  { id: 5, name: 'أرز بخاري باللحم', description: 'أرز بخاري بالجزر والزبيب يُقدّم مع قطع اللحم', price: 60, category: 'كبسة ومندي', calories: 1100, image: 'dishes/main-6.jpg', modifiers: [PORTION, TOPPINGS] },
+  { id: 6, name: 'برياني دجاج', description: 'أرز هندي بالبهارات الحارّة مع الدجاج الطري', price: 42, category: 'كبسة ومندي', calories: 980, image: 'dishes/main-2.jpg', modifiers: [SPICE, PORTION] },
+  { id: 7, name: 'مظبي دجاج', description: 'دجاج مشوي على الحجر بنكهة الفحم على أرز شعبي', price: 45, category: 'كبسة ومندي', calories: 1000, image: 'dishes/main-5.jpg', modifiers: [RICE_CHOICE, PORTION] },
+  { id: 8, name: 'مفطّح خروف كامل', description: 'خروف كامل على أرز بخاري — طبق الولائم الكبرى (يكفي ١٠–١٢ ضيف)', price: 850, category: 'كبسة ومندي', calories: 0, image: 'services/banquets.jpg', modifiers: [TOPPINGS] },
+
+  // ── مشويات ──────────────────────────────────
+  { id: 9, name: 'مشاوي مشكّلة', description: 'تشكيلة كباب وتكة وأوصال مشوية على الفحم', price: 88, category: 'مشويات', calories: 1150, image: 'dishes/grill-2.jpg', modifiers: [SPICE, GRILL_SIDES] },
+  { id: 10, name: 'شيش طاووق', description: 'قطع دجاج متبّلة مشوية على الأسياخ', price: 36, category: 'مشويات', calories: 700, image: 'dishes/grill-1.jpg', modifiers: [GRILL_SIDES] },
+  { id: 11, name: 'كباب لحم', description: 'لحم مفروم متبّل بالبهارات والأعشاب مشوي على الفحم', price: 48, category: 'مشويات', calories: 820, image: 'dishes/grill-3.jpg', modifiers: [SPICE, GRILL_SIDES] },
+  { id: 12, name: 'أرياش لحم', description: 'ريش خروف مشوية على الفحم بتتبيلة خاصة', price: 95, category: 'مشويات', calories: 900, image: 'dishes/grill-4.jpg', modifiers: [GRILL_SIDES] },
+  { id: 13, name: 'تكة دجاج', description: 'مكعبات دجاج متبّلة بالزعفران واللبن', price: 34, category: 'مشويات', calories: 680, image: 'dishes/grill-1.jpg', modifiers: [GRILL_SIDES] },
+
+  // ── شعبيات ──────────────────────────────────
+  { id: 14, name: 'جريش أحمر', description: 'جريش قصيمي مطبوخ باللبن واللحم على نار هادئة', price: 28, category: 'شعبيات', calories: 520, image: 'dishes/main-6.jpg' },
+  { id: 15, name: 'مرقوق باللحم', description: 'عجين رقيق مع مرق اللحم والخضار', price: 30, category: 'شعبيات', calories: 600, image: 'dishes/main-4.jpg' },
+  { id: 16, name: 'قرصان', description: 'رقائق عجين بمرق الدجاج والخضار', price: 26, category: 'شعبيات', calories: 560, image: 'dishes/main-2.jpg' },
+  { id: 17, name: 'صالونة لحم', description: 'يخنة لحم وخضار بالبهارات الخليجية', price: 32, category: 'شعبيات', calories: 540, image: 'dishes/main-5.jpg' },
+  { id: 18, name: 'مطازيز', description: 'كبيبات عجين مع مرق اللحم الغني', price: 29, category: 'شعبيات', calories: 580, image: 'dishes/main-1.jpg' },
+
+  // ── مقبلات وسلطات ───────────────────────────
+  { id: 19, name: 'حمص بالطحينة', description: 'معجون الحمّص بزيت الزيتون والكمون', price: 14, category: 'مقبلات', calories: 220, image: 'dishes/mezze-1.jpg' },
+  { id: 20, name: 'متبّل باذنجان', description: 'باذنجان مدخّن مهروس بالطحينة', price: 14, category: 'مقبلات', calories: 200, image: 'dishes/mezze-1.jpg' },
+  { id: 21, name: 'تبّولة', description: 'بقدونس وبرغل وطماطم بزيت الزيتون والليمون', price: 16, category: 'مقبلات', calories: 180, image: 'dishes/mezze-2.jpg' },
+  { id: 22, name: 'فتّوش', description: 'خضار طازجة مع خبز محمّص ودبس الرمان', price: 16, category: 'مقبلات', calories: 210, image: 'dishes/mezze-2.jpg' },
+  { id: 23, name: 'سمبوسك لحم', description: 'معجّنات مقرمشة محشوة باللحم المتبّل (٦ حبات)', price: 18, category: 'مقبلات', calories: 360, image: 'dishes/samosa-1.jpg' },
+  { id: 24, name: 'ورق عنب', description: 'محشي بالأرز والبهارات والأعشاب', price: 20, category: 'مقبلات', calories: 300, image: 'dishes/dolma-1.jpg' },
+  { id: 25, name: 'سلطة خضراء', description: 'خضروات موسمية طازجة مع زيت الزيتون', price: 12, category: 'مقبلات', calories: 120, image: 'dishes/mezze-2.jpg' },
+
+  // ── حلويات ──────────────────────────────────
+  { id: 26, name: 'لقيمات', description: 'كرات مقرمشة بالعسل والسمسم (١٢ حبة)', price: 18, category: 'حلويات', calories: 420, image: 'dishes/luqaimat-1.jpg' },
+  { id: 27, name: 'كنافة', description: 'عجينة وجبن وقطر بماء الورد', price: 22, category: 'حلويات', calories: 480, image: 'dishes/kunafa-1.jpg' },
+  { id: 28, name: 'بقلاوة', description: 'طبقات رقيقة بالفستق والعسل (٦ قطع)', price: 24, category: 'حلويات', calories: 450, image: 'dishes/sweet-1.jpg' },
+  { id: 29, name: 'أم علي', description: 'حلى دافئ بالحليب والمكسرات', price: 20, category: 'حلويات', calories: 400, image: 'dishes/sweet-2.jpg' },
+
+  // ── مشروبات ─────────────────────────────────
+  { id: 30, name: 'قهوة عربية وتمر', description: 'ضيافة أصيلة لاستقبال الضيوف (دلّة + تمر)', price: 18, category: 'مشروبات', calories: 60, image: 'dishes/drink-1.jpg' },
+  { id: 31, name: 'شاي بالنعناع', description: 'شاي ساخن بالنعناع الطازج', price: 8, category: 'مشروبات', calories: 40, image: 'dishes/tea-1.jpg' },
+  { id: 32, name: 'عصير برتقال طازج', description: 'برتقال معصور طازج بدون سكر مضاف', price: 14, category: 'مشروبات', calories: 110, image: 'dishes/juice-1.jpg' },
+  { id: 33, name: 'لبن وعيران', description: 'مشروب لبن منعش يقدّم بارداً', price: 7, category: 'مشروبات', calories: 90, image: 'dishes/laban-1.jpg' },
 ];
 
 const BRANCHES: Branch[] = [
@@ -1261,18 +1278,14 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
 
             {/* Product grid */}
             <div className="grid grid-cols-2 gap-4">
-                {MOCK_PRODUCTS.filter(p => (activeCat === 'الكل' || p.category === activeCat) && (!searchQuery.trim() || p.name.includes(searchQuery) || p.description.includes(searchQuery))).map((product, idx) => (
-                    <motion.div
+                {MOCK_PRODUCTS.filter(p => (activeCat === 'الكل' || p.category === activeCat) && (!searchQuery.trim() || p.name.includes(searchQuery) || p.description.includes(searchQuery))).map((product) => (
+                    <div
                         key={product.id}
-                        initial={{ opacity: 0, y: 18 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true, margin: '-30px' }}
-                        transition={{ duration: 0.4, ease: 'easeOut', delay: (idx % 2) * 0.06 }}
-                        className="group bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer relative flex flex-col"
+                        className="group bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md cursor-pointer relative flex flex-col"
                         onClick={() => setSelectedProduct(product)}
                     >
                         <div className="relative h-40 overflow-hidden bg-gray-100">
-                            <img src={product.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={product.name} />
+                            <img src={product.image} loading="lazy" className="w-full h-full object-cover" alt={product.name} />
                             <button
                                 onClick={(e) => { e.stopPropagation(); toggleFavorite(product.id); }}
                                 aria-label={t('ord_favorites')}
@@ -1300,7 +1313,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                                 </button>
                             </div>
                         </div>
-                    </motion.div>
+                    </div>
                 ))}
             </div>
         </div>
