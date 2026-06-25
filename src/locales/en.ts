@@ -135,6 +135,7 @@ export const en: Record<string, string> = {
     ord_place_order: 'Place Order',
     ord_login: 'Login',
     ord_menu: 'Menu',
+    ord_back: 'Back',
     ord_favorites: 'Favorites',
     ord_profile: 'My Profile',
     ord_track: 'My Orders',

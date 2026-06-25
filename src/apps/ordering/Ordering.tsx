@@ -787,23 +787,21 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
     });
 
     return (
-        <div className="fixed inset-0 z-50 bg-ink/80 flex justify-center items-end md:items-center p-0 md:p-4 animate-fade-in">
-             <div className="bg-white w-full md:max-w-lg h-[92vh] md:h-auto md:max-h-[92vh] rounded-t-3xl md:rounded-3xl overflow-hidden flex flex-col relative animate-slide-up">
+        <div className="fixed inset-0 z-[60] bg-white flex flex-col animate-fade-in">
 
                 {/* Header image — title + price overlaid */}
-                <div className="h-60 relative shrink-0">
+                <div className="h-64 sm:h-80 relative shrink-0">
                     <img src={selectedProduct.image} className="w-full h-full object-cover" alt={selectedProduct.name} />
                     <span className="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/10 to-ink/25" />
-                    <div className="absolute top-2 inset-x-0 flex justify-center md:hidden pointer-events-none"><span className="w-12 h-1.5 bg-white/80 rounded-full"></span></div>
                     <button
                         onClick={() => setSelectedProduct(null)}
-                        aria-label={t('ord_cancel')}
-                        className="absolute top-4 end-4 w-10 h-10 bg-ink/40 backdrop-blur text-white rounded-full flex items-center justify-center hover:bg-ink/70 transition-colors"
+                        aria-label={t('ord_back')}
+                        className="absolute top-4 start-4 w-11 h-11 bg-white/90 backdrop-blur text-gray-800 rounded-full flex items-center justify-center shadow-lg hover:bg-white active:scale-95 transition-all"
                     >
-                        <X className="w-5 h-5" />
+                        <ArrowRight className={`w-6 h-6 ${language === 'en' ? 'rotate-180' : ''}`} />
                     </button>
                     <div className="absolute bottom-0 inset-x-0 p-5">
-                        <div className="flex items-end justify-between gap-3">
+                        <div className="max-w-2xl mx-auto flex items-end justify-between gap-3">
                             <h2 className="text-2xl font-display font-black text-white leading-tight drop-shadow">{selectedProduct.name}</h2>
                             <span className="shrink-0 bg-secondary-400 text-ink font-display font-black text-base rounded-full px-4 py-1.5 shadow-lg">{basePrice} {t('ord_sar')}</span>
                         </div>
@@ -811,7 +809,8 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto px-5 py-5 no-scrollbar">
+                <div className="flex-1 overflow-y-auto no-scrollbar">
+                  <div className="max-w-2xl mx-auto px-5 py-6">
                     <p className="text-gray-500 leading-relaxed mb-6">{selectedProduct.description}</p>
 
                     <div className="space-y-7">
@@ -875,10 +874,12 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                              ></textarea>
                         </div>
                     </div>
+                  </div>
                 </div>
 
                 {/* Footer Action */}
-                <div className="p-4 bg-white border-t border-gray-100">
+                <div className="bg-white border-t border-gray-100">
+                  <div className="max-w-2xl mx-auto p-4">
                     <div className="flex gap-3 items-center">
                         <div className="flex items-center bg-gray-100 rounded-full px-1.5 shrink-0">
                             <button onClick={() => setTempQty(Math.max(1, tempQty - 1))} aria-label="-" className="w-9 h-9 flex items-center justify-center text-gray-700 hover:text-brand-600"><Minus className="w-5 h-5" /></button>
@@ -894,8 +895,8 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                             <span className="font-black">· {(currentTotal * tempQty).toFixed(2)} {t('ord_sar')}</span>
                         </button>
                     </div>
+                  </div>
                 </div>
-             </div>
         </div>
     );
   };
