@@ -815,7 +815,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
 
                     <div className="space-y-9">
                         {selectedProduct.modifiers?.map(group => (
-                            <div key={group.id}>
+                            <div key={group.id} className="border-t border-gray-200 pt-8 first:border-t-0 first:pt-0">
                                 <div className="flex justify-between items-center mb-1">
                                     <h3 className="font-display font-black text-gray-900 text-lg flex items-center gap-2.5">
                                         <span className="w-1.5 h-5 rounded-full bg-secondary-500" />
@@ -825,7 +825,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                                         {group.min > 0 ? t('ord_required') : t('ord_optional')}
                                     </span>
                                 </div>
-                                <div className="divide-y divide-gray-100 border-y border-gray-100">
+                                <div className="divide-y divide-gray-100">
                                     {group.options.map(option => {
                                         const isSelected = tempModifiers[group.id]?.includes(option.id) || false;
                                         const toggle = () => {
@@ -860,7 +860,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                         ))}
 
                         {/* Notes */}
-                        <div>
+                        <div className="border-t border-gray-200 pt-8">
                              <h3 className="font-display font-black text-gray-900 text-lg flex items-center gap-2.5 mb-3">
                                  <span className="w-1.5 h-5 rounded-full bg-secondary-500" />
                                  {t('ord_notes')}
