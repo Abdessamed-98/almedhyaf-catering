@@ -1807,12 +1807,13 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
           </ul>
       </nav>
 
-      {/* Modals */}
-      {showBranchModal && <BranchSelectorModal />}
-      {showOrderTypeModal && <OrderTypeSelectorModal />}
+      {/* Modals — invoked as functions (not <El/>) so option/typing re-renders
+          reconcile in place instead of remounting + replaying the open animation */}
+      {showBranchModal && BranchSelectorModal()}
+      {showOrderTypeModal && OrderTypeSelectorModal()}
       {/* AddressFormModal removed */}
-      {showCardModal && <CardFormModal />}
-      {selectedProduct && <ProductDetailModal />}
+      {showCardModal && CardFormModal()}
+      {selectedProduct && ProductDetailModal()}
       
     </div>
   );
