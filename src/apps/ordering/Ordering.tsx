@@ -813,11 +813,11 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                   <div className="max-w-2xl mx-auto px-5 py-6">
                     <p className="text-gray-500 leading-relaxed mb-6">{selectedProduct.description}</p>
 
-                    <div className="space-y-7">
+                    <div className="space-y-9">
                         {selectedProduct.modifiers?.map(group => (
                             <div key={group.id}>
-                                <div className="flex justify-between items-center mb-3">
-                                    <h3 className="font-display font-bold text-gray-900 text-lg flex items-center gap-2.5">
+                                <div className="flex justify-between items-center mb-1">
+                                    <h3 className="font-display font-black text-gray-900 text-lg flex items-center gap-2.5">
                                         <span className="w-1.5 h-5 rounded-full bg-secondary-500" />
                                         {group.name}
                                     </h3>
@@ -849,7 +849,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                                                     <span className={`w-5 h-5 ${group.max > 1 ? 'rounded-md' : 'rounded-full'} border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'border-brand-600 bg-brand-600 text-white' : 'border-gray-300 group-hover:border-gray-400'}`}>
                                                         {isSelected && <Check className="w-3 h-3" strokeWidth={3} />}
                                                     </span>
-                                                    <span className={`font-bold transition-colors ${isSelected ? 'text-brand-700' : 'text-gray-700'}`}>{option.name}</span>
+                                                    <span className={`transition-colors ${isSelected ? 'font-bold text-brand-700' : 'font-medium text-gray-600'}`}>{option.name}</span>
                                                 </span>
                                                 {option.price > 0 && <span className={`text-sm font-bold ${isSelected ? 'text-brand-600' : 'text-gray-400'}`}>+{option.price} {t('ord_sar')}</span>}
                                             </button>
@@ -861,7 +861,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
 
                         {/* Notes */}
                         <div>
-                             <h3 className="font-display font-bold text-gray-900 text-lg flex items-center gap-2.5 mb-3">
+                             <h3 className="font-display font-black text-gray-900 text-lg flex items-center gap-2.5 mb-3">
                                  <span className="w-1.5 h-5 rounded-full bg-secondary-500" />
                                  {t('ord_notes')}
                              </h3>
