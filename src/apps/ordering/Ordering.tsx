@@ -787,7 +787,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
     });
 
     return (
-        <div className="fixed inset-0 z-[60] bg-white flex flex-col">
+        <div className="fixed inset-0 z-[60] bg-white flex flex-col animate-slide-up">
 
                 {/* Header image — title + price overlaid */}
                 <div className="h-64 sm:h-80 relative shrink-0">
