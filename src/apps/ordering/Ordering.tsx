@@ -825,7 +825,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                                         {group.min > 0 ? t('ord_required') : t('ord_optional')}
                                     </span>
                                 </div>
-                                <div className="grid grid-cols-1 gap-2.5">
+                                <div className="divide-y divide-gray-100 border-y border-gray-100">
                                     {group.options.map(option => {
                                         const isSelected = tempModifiers[group.id]?.includes(option.id) || false;
                                         const toggle = () => {
@@ -843,13 +843,13 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                                                 key={option.id}
                                                 type="button"
                                                 onClick={toggle}
-                                                className={`flex items-center justify-between px-4 py-3.5 rounded-2xl border-2 text-start transition-all ${isSelected ? 'border-brand-600 bg-brand-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                                                className="group w-full flex items-center justify-between py-3.5 text-start"
                                             >
                                                 <span className="flex items-center gap-3">
-                                                    <span className={`w-5 h-5 ${group.max > 1 ? 'rounded-md' : 'rounded-full'} border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'border-brand-600 bg-brand-600 text-white' : 'border-gray-300'}`}>
+                                                    <span className={`w-5 h-5 ${group.max > 1 ? 'rounded-md' : 'rounded-full'} border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'border-brand-600 bg-brand-600 text-white' : 'border-gray-300 group-hover:border-gray-400'}`}>
                                                         {isSelected && <Check className="w-3 h-3" strokeWidth={3} />}
                                                     </span>
-                                                    <span className={`font-bold ${isSelected ? 'text-brand-700' : 'text-gray-700'}`}>{option.name}</span>
+                                                    <span className={`font-bold transition-colors ${isSelected ? 'text-brand-700' : 'text-gray-700'}`}>{option.name}</span>
                                                 </span>
                                                 {option.price > 0 && <span className={`text-sm font-bold ${isSelected ? 'text-brand-600' : 'text-gray-400'}`}>+{option.price} {t('ord_sar')}</span>}
                                             </button>
