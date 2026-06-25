@@ -134,6 +134,7 @@ export const ar: Record<string, string> = {
     ord_notes: 'ملاحظات',
     ord_place_order: 'تنفيذ الطلب',
     ord_login: 'تسجيل الدخول',
+    ord_menu: 'القائمة',
     ord_favorites: 'المفضلة',
     ord_profile: 'حسابي',
     ord_track: 'طلباتي',

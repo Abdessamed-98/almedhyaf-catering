@@ -1771,7 +1771,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
       <nav className="fixed bottom-0 inset-x-0 z-40 pb-safe bg-white/95 backdrop-blur-xl border-t border-gray-200 shadow-[0_-10px_30px_rgba(0,0,0,0.07)]">
           <ul className="mx-auto max-w-2xl flex items-stretch">
               {[
-                { key: 'HOME', icon: Utensils, label: t('nav_menu'), active: activeTab === 'HOME', onClick: () => setActiveTab('HOME') },
+                { key: 'HOME', icon: Utensils, label: t('ord_menu'), active: activeTab === 'HOME', onClick: () => setActiveTab('HOME') },
                 { key: 'FAVORITES', icon: Heart, label: t('ord_favorites'), active: activeTab === 'FAVORITES', onClick: () => setActiveTab('FAVORITES') },
                 { key: 'CART', icon: ShoppingBag, label: t('ord_cart'), active: activeTab === 'CART', onClick: () => setActiveTab('CART'), badge: cart.length },
                 { key: 'ORDERS', icon: Package, label: t('ord_track'), active: ['ORDERS', 'ORDER_DETAILS'].includes(activeTab), onClick: () => setActiveTab('ORDERS') },
