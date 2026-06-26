@@ -7,9 +7,9 @@ interface PhotoStripProps {
 }
 
 /**
- * Full-width photo strip that:
+ * Full-width photo strip:
  *  - auto-scrolls slowly in a seamless loop
- *  - pauses while the pointer is held down (or hovering)
+ *  - pauses while dragged
  *  - can be dragged / swiped manually
  */
 const PhotoStrip: React.FC<PhotoStripProps> = ({ images, speed = 0.4 }) => {
@@ -25,7 +25,6 @@ const PhotoStrip: React.FC<PhotoStripProps> = ({ images, speed = 0.4 }) => {
       const half = el.scrollWidth / 2;
       if (half > 0) {
         if (!dragging.current) el.scrollLeft += speed;
-        // wrap seamlessly (content is duplicated, so half === one full set)
         if (el.scrollLeft >= half) el.scrollLeft -= half;
         else if (el.scrollLeft < 0) el.scrollLeft += half;
       }
@@ -35,7 +34,6 @@ const PhotoStrip: React.FC<PhotoStripProps> = ({ images, speed = 0.4 }) => {
     return () => cancelAnimationFrame(raf);
   }, [speed]);
 
-  // Mouse: drag to slide (touch is handled natively + via touch events below)
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType !== 'mouse') return;
     const el = ref.current;
@@ -72,7 +70,7 @@ const PhotoStrip: React.FC<PhotoStripProps> = ({ images, speed = 0.4 }) => {
       {[...images, ...images].map((src, i) => (
         <div
           key={i}
-          className="shrink-0 w-52 sm:w-64 md:w-72 aspect-[9/16] rounded-2xl overflow-hidden shadow-md ring-1 ring-black/5"
+          className="shrink-0 w-48 sm:w-60 md:w-72 aspect-[9/16] rounded-2xl overflow-hidden shadow-md ring-1 ring-black/5"
         >
           <img
             src={src}

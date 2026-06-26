@@ -6,7 +6,8 @@ import {
   CreditCard, Banknote, ShieldCheck, Flame, Smartphone,
   Package, CheckCircle, RefreshCw, AlertCircle, UtensilsCrossed, ChevronDown,
   Trash2, Edit2, Bell, Shield, LogOut, Check, Globe, HelpCircle, FileText,
-  Save, Loader, Wallet, Calendar, TicketPercent, Crosshair, Gift
+  Save, Loader, Wallet, Calendar, TicketPercent, Crosshair, Gift,
+  LayoutGrid, List
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { OrderType, Product, CartItem, Branch } from '../../types';
@@ -167,13 +168,139 @@ interface OrderingProps {
   onBackToPortal: () => void;
 }
 
+// ── Menu product card (grid or list) ──────────────────────────────
+interface CardProps {
+  product: Product;
+  view: 'grid' | 'list';
+  fav: boolean;
+  onFav: () => void;
+  onSelect: () => void;
+  t: (k: string) => string;
+}
+const ProductCard: React.FC<CardProps> = ({ product, view, fav, onFav, onSelect, t }) => {
+  if (view === 'list') {
+    return (
+      <div onClick={onSelect} className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-2.5 cursor-pointer hover:shadow-md transition-shadow">
+        <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+          <img src={product.image} loading="lazy" className="w-full h-full object-cover" alt={product.name} />
+        </div>
+        <div className="flex-1 min-w-0 self-stretch flex flex-col py-0.5">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-bold text-gray-900 leading-snug line-clamp-1">{product.name}</h3>
+            <button onClick={(e) => { e.stopPropagation(); onFav(); }} aria-label={t('ord_favorites')} className={`shrink-0 -mt-0.5 ${fav ? 'text-brand-600' : 'text-gray-300 hover:text-brand-500'}`}>
+              <Heart className={`w-5 h-5 ${fav ? 'fill-current' : ''}`} />
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 line-clamp-2 mt-1 flex-1">{product.description}</p>
+          <div className="flex items-center justify-between mt-2">
+            <span className="font-black text-brand-700 text-lg">{product.price} <span className="text-xs font-bold text-gray-400">{t('ord_sar')}</span></span>
+            <button onClick={(e) => { e.stopPropagation(); onSelect(); }} aria-label={t('ord_add')} className="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700 active:scale-95 shadow-md shadow-brand-900/20 transition-all">
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div onClick={onSelect} className="group bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md cursor-pointer relative flex flex-col">
+      <div className="relative h-40 overflow-hidden bg-gray-100">
+        <img src={product.image} loading="lazy" className="w-full h-full object-cover" alt={product.name} />
+        <button onClick={(e) => { e.stopPropagation(); onFav(); }} aria-label={t('ord_favorites')} className={`absolute top-2.5 end-2.5 p-1.5 rounded-full backdrop-blur-sm transition-colors ${fav ? 'text-brand-600 bg-white' : 'text-white bg-black/25 hover:bg-black/40'}`}>
+          <Heart className={`w-4 h-4 ${fav ? 'fill-current' : ''}`} />
+        </button>
+        {product.calories ? (
+          <span className="absolute bottom-2 start-2 flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+            <Flame className="w-3 h-3 text-secondary-400" /> {product.calories} {t('ord_calories')}
+          </span>
+        ) : null}
+      </div>
+      <div className="p-3 flex flex-col flex-1">
+        <h3 className="font-bold text-gray-900 text-sm leading-snug line-clamp-1">{product.name}</h3>
+        <p className="text-xs text-gray-500 line-clamp-2 mt-1 mb-3 flex-1">{product.description}</p>
+        <div className="flex items-center justify-between">
+          <span className="font-black text-brand-700 text-lg">{product.price} <span className="text-xs font-bold text-gray-400">{t('ord_sar')}</span></span>
+          <button onClick={(e) => { e.stopPropagation(); onSelect(); }} aria-label={t('ord_add')} className="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700 active:scale-95 shadow-md shadow-brand-900/20 transition-all">
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Menu — one continuous list grouped by category (with scrollspy anchors) ──
+interface MenuScreenProps {
+  t: (k: string) => string;
+  language: string;
+  searchQuery: string;
+  menuView: 'grid' | 'list';
+  favorites: number[];
+  toggleFavorite: (id: number) => void;
+  onSelect: (p: Product) => void;
+}
+const MenuScreen: React.FC<MenuScreenProps> = ({ t, language, searchQuery, menuView, favorites, toggleFavorite, onSelect }) => {
+  const BANNERS = [
+    { id: 1, title: language === 'ar' ? 'عرض الغداء' : 'Lunch Offer', subtitle: language === 'ar' ? 'خصم 20% على جميع الكبسات' : '20% OFF on all Kabsa', image: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=800' },
+    { id: 2, title: language === 'ar' ? 'توصيل مجاني' : 'Free Delivery', subtitle: language === 'ar' ? 'للطلبات فوق 100 ريال' : 'Orders above 100 SAR', image: 'https://images.unsplash.com/photo-1590556409324-aa1d726e5c3c?q=80&w=800&auto=format&fit=crop' },
+    { id: 3, title: language === 'ar' ? 'جديدنا' : 'New Item', subtitle: language === 'ar' ? 'جرب الجريش الأحمر' : 'Try Red Jareesh', image: 'https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&q=80&w=800' },
+  ];
+  const q = searchQuery.trim();
+  const CATS = Array.from(new Set(MOCK_PRODUCTS.map(p => p.category)));
+  const groups = CATS
+    .map(cat => ({ cat, items: MOCK_PRODUCTS.filter(p => p.category === cat && (!q || p.name.includes(q) || p.description.includes(q))) }))
+    .filter(g => g.items.length > 0);
+
+  return (
+    <div className="pb-28 pt-[170px] px-4 max-w-2xl mx-auto">
+      {!q && (
+        <div className="mb-6 -mx-4 px-4">
+          <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2">
+            {BANNERS.map(banner => (
+              <div key={banner.id} className="min-w-[88%] md:min-w-[60%] h-44 rounded-3xl relative overflow-hidden snap-center shadow-lg shadow-brand-900/10">
+                <img src={banner.image} alt={banner.title} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-brand-900 via-brand-900/40 to-transparent"></div>
+                <div className="absolute inset-0 p-5 flex flex-col justify-end text-white">
+                  <span className="inline-flex items-center gap-1.5 bg-secondary-500 text-ink text-xs font-black px-3 py-1 rounded-full w-fit mb-2">
+                    <TicketPercent className="w-3.5 h-3.5" />{banner.title}
+                  </span>
+                  <p className="text-sm font-medium text-gray-100">{banner.subtitle}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {groups.length === 0 ? (
+        <div className="text-center text-gray-400 py-20 font-bold">{language === 'ar' ? 'لا توجد منتجات مطابقة' : 'No matching products'}</div>
+      ) : groups.map(g => (
+        <section key={g.cat} data-cat={g.cat} className="scroll-mt-[160px] mb-9">
+          <h2 className="font-display font-black text-xl text-gray-900 mb-4 flex items-center gap-2.5">
+            <span className="w-1.5 h-6 rounded-full bg-secondary-500" />{g.cat}
+          </h2>
+          <div className={menuView === 'grid' ? 'grid grid-cols-2 gap-4' : 'flex flex-col gap-3'}>
+            {g.items.map(p => (
+              <ProductCard key={p.id} product={p} view={menuView} fav={favorites.includes(p.id)} onFav={() => toggleFavorite(p.id)} onSelect={() => onSelect(p)} t={t} />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+};
+
 const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
   const { t, language, toggleLanguage, dir } = useLanguage();
   const toast = useToast();
   const [notificationsOn, setNotificationsOn] = useState(true);
   const [searchQuery, setSearchQuery] = useState(''); // menu search (header)
   const [scrolled, setScrolled] = useState(false); // scroll-aware header
-  const [activeCat, setActiveCat] = useState('الكل'); // menu category filter (lifted out of MenuScreen)
+  const [activeCat, setActiveCat] = useState(MOCK_PRODUCTS[0].category); // active menu category (scrollspy)
+  const activeCatRef = useRef(activeCat);
+  activeCatRef.current = activeCat;
+  const spyLock = useRef(0); // suppresses scrollspy briefly right after a tab click
+  const [menuView, setMenuView] = useState<'grid' | 'list'>('grid'); // product layout toggle
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -184,11 +311,44 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
   // App State
   // Added POINTS to activeTab type
   const [activeTab, setActiveTab] = useState<'HOME' | 'CART' | 'CHECKOUT' | 'PROFILE' | 'FAVORITES' | 'ORDERS' | 'ADDRESSES' | 'MAP_ADDRESS' | 'PAYMENTS' | 'SETTINGS' | 'ORDER_DETAILS' | 'POINTS'>('HOME');
+
+  // jump to a category section (tab click)
+  const scrollToCat = (cat: string) => {
+    setActiveCat(cat);
+    spyLock.current = performance.now() + 700;
+    const el = document.querySelector(`[data-cat="${cat}"]`) as HTMLElement | null;
+    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 130, behavior: 'smooth' });
+  };
+
+  // scrollspy — highlight the category whose section sits at the top of the viewport
+  useEffect(() => {
+    if (activeTab !== 'HOME') return;
+    const onScroll = () => {
+      if (performance.now() < spyLock.current) return;
+      let current = '';
+      document.querySelectorAll('[data-cat]').forEach(s => {
+        if (s.getBoundingClientRect().top <= 170) current = s.getAttribute('data-cat') || current;
+      });
+      if (current && current !== activeCatRef.current) setActiveCat(current);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [activeTab, searchQuery, menuView]);
+
+  // keep the active category tab visible in the (horizontally-scrolling) strip
+  useEffect(() => {
+    const el = document.querySelector(`[data-tab="${activeCat}"]`) as HTMLElement | null;
+    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [activeCat]);
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [showBranchModal, setShowBranchModal] = useState(true);
   const [showOrderTypeModal, setShowOrderTypeModal] = useState(false);
   const [orderType, setOrderType] = useState<OrderType>('DELIVERY');
   const [cart, setCart] = useState<CartItem[]>([]);
+  const orderNoteRef = useRef(''); // cart-level note to the kitchen (uncontrolled — survives re-renders)
+  const [promo, setPromo] = useState<{ code: string; off: number } | null>(null); // applied checkout promo
+  const promoRef = useRef(''); // promo input (uncontrolled)
   const [favorites, setFavorites] = useState<number[]>([]); // Product IDs
   const [points, setPoints] = useState(1250); // Loyalty points
 
@@ -1230,96 +1390,6 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
     );
   };
 
-  const MenuScreen = () => {
-     const categories = Array.from(new Set(MOCK_PRODUCTS.map(p => p.category)));
-
-     const BANNERS = [
-        { id: 1, title: language === 'ar' ? 'عرض الغداء' : 'Lunch Offer', subtitle: language === 'ar' ? 'خصم 20% على جميع الكبسات' : '20% OFF on all Kabsa', image: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=800' },
-        { id: 2, title: language === 'ar' ? 'توصيل مجاني' : 'Free Delivery', subtitle: language === 'ar' ? 'للطلبات فوق 100 ريال' : 'Orders above 100 SAR', image: 'https://images.unsplash.com/photo-1590556409324-aa1d726e5c3c?q=80&w=800&auto=format&fit=crop' },
-        { id: 3, title: language === 'ar' ? 'جديدنا' : 'New Item', subtitle: language === 'ar' ? 'جرب الجريش الأحمر' : 'Try Red Jareesh', image: 'https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&q=80&w=800' }
-     ];
-
-     return (
-        <div className="pb-28 pt-32 px-4 max-w-2xl mx-auto">
-            {/* Featured banners */}
-             <div className="mb-8 -mx-4 px-4">
-                <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2">
-                    {BANNERS.map(banner => (
-                        <div key={banner.id} className="min-w-[88%] md:min-w-[60%] h-44 rounded-3xl relative overflow-hidden snap-center shadow-lg shadow-brand-900/10">
-                            <img src={banner.image} alt={banner.title} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-brand-900 via-brand-900/40 to-transparent"></div>
-                            <div className="absolute inset-0 p-5 flex flex-col justify-end text-white">
-                                <span className="inline-flex items-center gap-1.5 bg-secondary-500 text-ink text-xs font-black px-3 py-1 rounded-full w-fit mb-2">
-                                    <TicketPercent className="w-3.5 h-3.5" />
-                                    {banner.title}
-                                </span>
-                                <p className="text-sm font-medium text-gray-100">{banner.subtitle}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Category tabs (editorial underline) */}
-            <div className={`flex gap-7 overflow-x-auto no-scrollbar mb-6 sticky top-[58px] z-30 backdrop-blur pt-2.5 pb-0 -mx-4 px-4 border-b transition-colors ${scrolled ? 'bg-white/95 border-gray-100' : 'bg-pageBg/95 border-transparent'}`}>
-                {[{ id: 'الكل', label: language === 'ar' ? 'الكل' : 'All' }, ...categories.map(c => ({ id: c, label: c }))].map(cat => {
-                    const isActive = activeCat === cat.id;
-                    return (
-                        <button
-                            key={cat.id}
-                            onClick={() => setActiveCat(cat.id)}
-                            className={`relative whitespace-nowrap pb-3 text-base font-bold transition-colors ${isActive ? 'text-brand-700' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            {cat.label}
-                            {isActive && <span className="absolute -bottom-px inset-x-0 h-[3px] bg-secondary-500 rounded-full"></span>}
-                        </button>
-                    );
-                })}
-            </div>
-
-            {/* Product grid */}
-            <div className="grid grid-cols-2 gap-4">
-                {MOCK_PRODUCTS.filter(p => (activeCat === 'الكل' || p.category === activeCat) && (!searchQuery.trim() || p.name.includes(searchQuery) || p.description.includes(searchQuery))).map((product) => (
-                    <div
-                        key={product.id}
-                        className="group bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md cursor-pointer relative flex flex-col"
-                        onClick={() => setSelectedProduct(product)}
-                    >
-                        <div className="relative h-40 overflow-hidden bg-gray-100">
-                            <img src={product.image} loading="lazy" className="w-full h-full object-cover" alt={product.name} />
-                            <button
-                                onClick={(e) => { e.stopPropagation(); toggleFavorite(product.id); }}
-                                aria-label={t('ord_favorites')}
-                                className={`absolute top-2.5 end-2.5 p-1.5 rounded-full backdrop-blur-sm transition-colors ${favorites.includes(product.id) ? 'text-brand-600 bg-white' : 'text-white bg-black/25 hover:bg-black/40'}`}
-                            >
-                                <Heart className={`w-4 h-4 ${favorites.includes(product.id) ? 'fill-current' : ''}`} />
-                            </button>
-                            {product.calories ? (
-                                <span className="absolute bottom-2 start-2 flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                    <Flame className="w-3 h-3 text-secondary-400" /> {product.calories} {t('ord_calories')}
-                                </span>
-                            ) : null}
-                        </div>
-                        <div className="p-3 flex flex-col flex-1">
-                            <h3 className="font-bold text-gray-900 text-sm leading-snug line-clamp-1">{product.name}</h3>
-                            <p className="text-xs text-gray-500 line-clamp-2 mt-1 mb-3 flex-1">{product.description}</p>
-                            <div className="flex items-center justify-between">
-                                <span className="font-black text-brand-700 text-lg">{product.price} <span className="text-xs font-bold text-gray-400">{t('ord_sar')}</span></span>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setSelectedProduct(product); }}
-                                    aria-label={t('ord_add')}
-                                    className="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700 active:scale-95 shadow-md shadow-brand-900/20 transition-all"
-                                >
-                                    <Plus className="w-5 h-5" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-     );
-  };
 
   const CartScreen = () => {
       const ar = language === 'ar';
@@ -1338,19 +1408,34 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
           </div>
       );
 
+      // upsell suggestions — add-on categories not already in the cart (no required options → safe to one-tap add)
+      const inCart = new Set(cart.map(c => c.product.id));
+      const suggestions = MOCK_PRODUCTS.filter(p => ['مشروبات', 'حلويات', 'مقبلات'].includes(p.category) && !inCart.has(p.id)).slice(0, 8);
+      const addUpsell = (p: Product) => {
+          setCart([...cart, { cartId: Math.random().toString(36).slice(2, 9), product: p, quantity: 1, selectedModifiers: {}, notes: '' }]);
+          toast(t('ord_added_to_cart'));
+      };
+
+      // item count + correct Arabic pluralization (منتج / منتجان / منتجات)
+      const itemCount = cart.reduce((s, i) => s + i.quantity, 0);
+      const itemWord = ar
+          ? (itemCount === 1 ? 'منتج' : itemCount === 2 ? 'منتجان' : itemCount <= 10 ? 'منتجات' : 'منتج')
+          : (itemCount === 1 ? 'item' : 'items');
+
       return (
           <div className="pt-16 pb-32 px-4 max-w-2xl mx-auto">
-              {/* header — count merged into the title */}
-              <div className="flex items-center justify-between mb-5">
+              {/* header — title + item count */}
+              <div className="flex items-center justify-between mb-7">
                   <h2 className="text-3xl font-display font-black text-gray-900 flex items-baseline gap-2">
                       {t('ord_cart')}
-                      <span className="text-base font-bold text-gray-400">{cart.reduce((s, i) => s + i.quantity, 0)} {language === 'ar' ? 'صنف' : 'items'}</span>
+                      <span className="text-base font-bold text-gray-400">{itemCount} {itemWord}</span>
                   </h2>
-                  <button onClick={() => setCart([])} className="text-xs font-bold text-gray-400 hover:text-red-500 transition-colors">{language === 'ar' ? 'تفريغ السلة' : 'Clear all'}</button>
+                  <button onClick={() => setCart([])} className="text-xs font-bold text-gray-400 hover:text-red-500 transition-colors">{ar ? 'تفريغ السلة' : 'Clear all'}</button>
               </div>
 
-              {/* items */}
-              <div className="space-y-3 mb-6">
+              {/* ── طلبك / Your order ── */}
+              <h3 className="font-display font-black text-gray-900 text-lg flex items-center gap-2.5 mb-3"><span className="w-1.5 h-5 rounded-full bg-secondary-500" />{ar ? 'طلبك' : 'Your order'}</h3>
+              <div className="space-y-3">
                   {cart.map((item) => {
                       const mods = Object.values(item.selectedModifiers).flat().map(optId => {
                           for (const grp of item.product.modifiers || []) {
@@ -1361,25 +1446,25 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                       }).filter(Boolean) as string[];
                       const setQty = (q: number) => setCart(cart.map(c => c.cartId === item.cartId ? { ...c, quantity: Math.max(1, q) } : c));
                       return (
-                          <div key={item.cartId} className="relative h-[88px] flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm ps-3 pe-3 pt-3 pb-3">
+                          <div key={item.cartId} className="relative flex items-center gap-4 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                               {/* remove — obvious, top-left corner */}
                               <button
                                   onClick={() => setCart(cart.filter(c => c.cartId !== item.cartId))}
                                   aria-label={t('ord_cancel')}
-                                  className="absolute top-2 left-2 z-10 w-7 h-7 rounded-full bg-gray-100 text-gray-500 hover:bg-red-500 hover:text-white flex items-center justify-center shadow-sm transition-colors"
+                                  className="absolute top-2.5 left-2.5 z-10 w-7 h-7 rounded-full bg-gray-100 text-gray-500 hover:bg-red-500 hover:text-white flex items-center justify-center shadow-sm transition-colors"
                               >
                                   <X className="w-4 h-4" strokeWidth={2.5} />
                               </button>
-                              <img src={item.product.image} className="w-16 h-16 rounded-xl object-cover shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                  <h3 className="font-display font-bold text-gray-900 leading-tight truncate">{item.product.name}</h3>
-                                  {mods.length > 0 && <p className="text-[11px] text-gray-400 truncate mt-0.5">{mods.join(' · ')}</p>}
-                                  <div className="flex items-center justify-between gap-2 mt-1.5">
-                                      <span className="font-display font-black text-brand-700">{item.product.price * item.quantity} {t('ord_sar')}</span>
+                              <img src={item.product.image} className="w-20 h-20 rounded-xl object-cover shrink-0" />
+                              <div className="flex-1 min-w-0 self-stretch flex flex-col justify-center">
+                                  <h3 className="font-display font-bold text-gray-900 leading-tight truncate pe-6">{item.product.name}</h3>
+                                  {mods.length > 0 && <p className="text-xs text-gray-400 truncate mt-1">{mods.join(' · ')}</p>}
+                                  <div className="flex items-center justify-between gap-2 mt-3">
+                                      <span className="font-display font-black text-brand-700 text-lg">{item.product.price * item.quantity} {t('ord_sar')}</span>
                                       <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1 shrink-0">
-                                          <button onClick={() => setQty(item.quantity - 1)} aria-label="-" className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center text-brand-600 hover:bg-brand-50"><Minus className="w-3.5 h-3.5" /></button>
-                                          <span className="w-5 text-center font-bold text-xs">{item.quantity}</span>
-                                          <button onClick={() => setQty(item.quantity + 1)} aria-label="+" className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center text-brand-600 hover:bg-brand-50"><Plus className="w-3.5 h-3.5" /></button>
+                                          <button onClick={() => setQty(item.quantity - 1)} aria-label="-" className="w-7 h-7 rounded-full bg-white shadow-sm flex items-center justify-center text-brand-600 hover:bg-brand-50"><Minus className="w-4 h-4" /></button>
+                                          <span className="w-6 text-center font-bold text-sm">{item.quantity}</span>
+                                          <button onClick={() => setQty(item.quantity + 1)} aria-label="+" className="w-7 h-7 rounded-full bg-white shadow-sm flex items-center justify-center text-brand-600 hover:bg-brand-50"><Plus className="w-4 h-4" /></button>
                                       </div>
                                   </div>
                               </div>
@@ -1387,6 +1472,47 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                       );
                   })}
               </div>
+
+              {/* add more items */}
+              <button onClick={() => setActiveTab('HOME')} className="mt-3 mb-7 w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border border-dashed border-brand-300 text-brand-600 font-bold hover:bg-brand-50 transition-colors">
+                  <Plus className="w-5 h-5" />{ar ? 'أضف المزيد من المنتجات' : 'Add more items'}
+              </button>
+
+              {/* ── يُطلب عادة مع طلبك / Often ordered with ── */}
+              {suggestions.length > 0 && (
+                  <section className="mb-7">
+                      <h3 className="font-display font-black text-gray-900 text-lg flex items-center gap-2.5"><span className="w-1.5 h-5 rounded-full bg-secondary-500" />{ar ? 'يُطلب عادة مع طلبك' : 'Often ordered with'}</h3>
+                      <p className="text-xs text-gray-400 mt-1 mb-3 ps-4">{ar ? 'أضافها عملاء آخرون إلى طلبهم' : 'People usually add these items'}</p>
+                      <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
+                          {suggestions.map(p => (
+                              <div key={p.id} className="w-32 shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                  <div className="relative h-24">
+                                      <img src={p.image} className="w-full h-full object-cover" alt={p.name} />
+                                      <button onClick={() => addUpsell(p)} aria-label={t('ord_add')} className="absolute bottom-1.5 end-1.5 w-8 h-8 rounded-full bg-white text-brand-600 shadow-md flex items-center justify-center hover:bg-brand-600 hover:text-white active:scale-95 transition-all">
+                                          <Plus className="w-4 h-4" strokeWidth={2.5} />
+                                      </button>
+                                  </div>
+                                  <div className="p-2.5">
+                                      <p className="text-xs font-bold text-gray-800 leading-snug line-clamp-2 h-8">{p.name}</p>
+                                      <span className="text-sm font-black text-brand-700">{p.price} <span className="text-[10px] font-bold text-gray-400">{t('ord_sar')}</span></span>
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  </section>
+              )}
+
+              {/* ── ملاحظات للمطبخ / Notes for the kitchen ── */}
+              <section className="mb-7">
+                  <h3 className="font-display font-black text-gray-900 text-lg flex items-center gap-2.5 mb-3"><span className="w-1.5 h-5 rounded-full bg-secondary-500" />{ar ? 'ملاحظات للمطبخ' : 'Notes for the kitchen'}</h3>
+                  <textarea
+                      defaultValue={orderNoteRef.current}
+                      onChange={(e) => { orderNoteRef.current = e.target.value; }}
+                      rows={3}
+                      placeholder={ar ? 'مثال: بدون بصل، تغليف منفصل…' : 'E.g. no onions, separate packaging…'}
+                      className="w-full bg-white border border-gray-200 rounded-2xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent placeholder-gray-400"
+                  />
+              </section>
 
               {/* Loyalty — one toggle that applies your points discount */}
               <button
@@ -1443,45 +1569,73 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
         { id: 'CARD', label: t('ord_card'), node: <CreditCard className="w-5 h-5 text-brand-700" /> },
         { id: 'CASH', label: t('ord_cash'), node: <Banknote className="w-5 h-5 text-green-500" /> },
     ];
-    const steps = [
-        { n: '1', label: ar ? 'السلة' : 'Cart' },
-        { n: '2', label: ar ? 'المراجعة' : 'Review' },
-        { n: '3', label: ar ? 'التأكيد' : 'Confirm' },
-    ];
+    const subtotal = cartTotal;
+    const delivery = 15;
+    const promoOff = promo?.off ?? 0;
+    const total = Math.max(0, subtotal + delivery - promoOff);
+    const vat = Math.round((total * 15 / 115) * 100) / 100; // VAT portion (prices VAT-inclusive)
+
+    // static OpenStreetMap tile centred on the delivery address (no live map → no flicker)
+    const z = 15;
+    const mlat = selectedAddress?.lat ?? 21.4225;
+    const mlng = selectedAddress?.lng ?? 39.8262;
+    const nT = 2 ** z;
+    const tx = Math.floor((mlng + 180) / 360 * nT);
+    const ty = Math.floor((1 - Math.log(Math.tan(mlat * Math.PI / 180) + 1 / Math.cos(mlat * Math.PI / 180)) / Math.PI) / 2 * nT);
+    const tileUrl = `https://tile.openstreetmap.org/${z}/${tx}/${ty}.png`;
+
+    const openMap = () => {
+        if (selectedAddress) setTempAddress({ ...selectedAddress });
+        else setTempAddress({ id: 0, type: '', label: '', address: '', isDefault: false, lat: 21.4225, lng: 39.8262 });
+        setActiveTab('MAP_ADDRESS');
+    };
+    const applyPromo = () => {
+        const code = promoRef.current.trim();
+        if (!code) return;
+        setPromo({ code: code.toUpperCase(), off: Math.max(1, Math.round(subtotal * 0.1)) });
+        toast(ar ? 'تم تطبيق رمز الخصم' : 'Promo code applied');
+    };
 
     return (
         <div className="pt-6 pb-32 px-4 max-w-2xl mx-auto animate-fade-in">
-             <div className="flex items-center gap-3 mb-5">
+            {/* header */}
+            <div className="flex items-center gap-3 mb-6">
                 <button onClick={() => setActiveTab('CART')} className="w-9 h-9 rounded-full bg-white shadow-sm border border-gray-100 hover:bg-gray-50 text-gray-600 flex items-center justify-center shrink-0">
                     <ArrowRight className={`w-5 h-5 ${language === 'en' ? 'rotate-180' : ''}`} />
                 </button>
                 <h2 className="text-2xl font-display font-black text-gray-900">{t('ord_checkout_title')}</h2>
             </div>
 
-            {/* guided step indicator (Cart › Review › Confirm) */}
-            <div className="flex items-center mb-7">
-                {steps.map((s, i) => {
-                    const reached = i <= 1; // review is the current step
-                    return (
-                        <React.Fragment key={i}>
-                            <div className="flex items-center gap-2 shrink-0">
-                                <span className={`w-6 h-6 rounded-full text-[11px] font-black flex items-center justify-center ${reached ? 'bg-brand-600 text-white' : 'bg-gray-200 text-gray-500'}`} dir="ltr">{s.n}</span>
-                                <span className={`text-xs font-bold ${reached ? 'text-brand-700' : 'text-gray-400'}`}>{s.label}</span>
-                            </div>
-                            {i < steps.length - 1 && <span className={`flex-1 h-0.5 mx-2 rounded ${i < 1 ? 'bg-brand-600' : 'bg-gray-200'}`} />}
-                        </React.Fragment>
-                    );
-                })}
-            </div>
+            {/* Map preview + address */}
+            <section className="mb-7">
+                <button onClick={openMap} className="relative block w-full h-40 rounded-2xl overflow-hidden border border-gray-100 shadow-sm group">
+                    <span className="absolute inset-0 bg-gray-100 bg-cover bg-center" style={{ backgroundImage: `url(${tileUrl})` }} />
+                    <span className="absolute inset-0 bg-ink/5" />
+                    <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full text-brand-600 drop-shadow-md">
+                        <MapPin className="w-9 h-9" fill="currentColor" strokeWidth={1.5} />
+                    </span>
+                    <span className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white text-gray-800 text-sm font-bold px-4 py-2 rounded-full shadow-md flex items-center gap-2 group-hover:bg-gray-50 transition-colors">
+                        <Crosshair className="w-4 h-4 text-brand-600" />{ar ? 'تعديل الموقع' : 'Edit pin'}
+                    </span>
+                </button>
+                <button onClick={() => setActiveTab('ADDRESSES')} className="w-full mt-3 flex items-center gap-3 bg-white border border-gray-100 rounded-2xl shadow-sm p-4 text-start hover:border-gray-200 transition-colors">
+                    <span className="w-10 h-10 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center shrink-0"><MapPin className="w-5 h-5" /></span>
+                    <div className="min-w-0 flex-1">
+                        <div className="font-bold text-gray-900">{selectedAddress ? selectedAddress.label : (ar ? 'اختر عنوان التوصيل' : 'Choose delivery address')}</div>
+                        {selectedAddress && <div className="text-sm text-gray-500 truncate">{selectedAddress.address}</div>}
+                    </div>
+                    <ChevronLeft className={`w-5 h-5 text-gray-300 shrink-0 ${language === 'en' ? 'rotate-180' : ''}`} />
+                </button>
+            </section>
 
-            {/* Delivery Time */}
-            <section className="mb-6">
-                <h3 className="flex items-center gap-2.5 font-display font-bold text-gray-900 mb-3"><span className="w-1.5 h-5 rounded-full bg-secondary-500" />{t('ord_delivery_time')}</h3>
+            {/* Delivery time */}
+            <section className="mb-7">
+                <h3 className="font-display font-black text-gray-900 text-lg flex items-center gap-2.5 mb-3"><span className="w-1.5 h-5 rounded-full bg-secondary-500" />{t('ord_delivery_time')}</h3>
                 <div className="grid grid-cols-2 gap-3">
                     {([['ASAP', t('ord_asap'), Bike], ['LATER', t('ord_later'), Clock]] as const).map(([id, label, Icon]) => {
                         const on = deliveryTime === id;
                         return (
-                            <button key={id} onClick={() => setDeliveryTime(id)} className={`flex items-center gap-3 p-3.5 rounded-2xl border-2 transition-all ${on ? 'border-brand-600 bg-brand-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                            <button key={id} onClick={() => setDeliveryTime(id)} className={`flex items-center gap-3 p-3.5 rounded-2xl border-2 transition-all ${on ? 'border-brand-600 bg-brand-50' : 'border-transparent bg-white shadow-sm hover:shadow-md'}`}>
                                 <span className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${on ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500'}`}><Icon className="w-5 h-5" /></span>
                                 <span className={`font-bold ${on ? 'text-brand-700' : 'text-gray-700'}`}>{label}</span>
                             </button>
@@ -1490,61 +1644,57 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                 </div>
             </section>
 
-            {/* Address */}
-            <section className="mb-6">
-                <div className="flex items-center justify-between mb-3">
-                    <h3 className="flex items-center gap-2.5 font-display font-bold text-gray-900"><span className="w-1.5 h-5 rounded-full bg-secondary-500" />{t('ord_delivering_to')}</h3>
-                    <button onClick={() => setActiveTab('ADDRESSES')} className="text-sm font-bold text-brand-700 hover:underline">{t('ord_change')}</button>
-                </div>
-                {selectedAddress ? (
-                    <div className="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
-                        <span className="w-10 h-10 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center shrink-0"><MapPin className="w-5 h-5" /></span>
-                        <div className="min-w-0">
-                            <div className="font-bold text-gray-900">{selectedAddress.label}</div>
-                            <div className="text-sm text-gray-500 truncate">{selectedAddress.address}</div>
-                        </div>
-                    </div>
-                ) : (
-                    <button
-                        onClick={() => {
-                            setTempAddress({ id: 0, type: '', label: '', address: '', isDefault: false, lat: 21.4225, lng: 39.8262 });
-                            setActiveTab('MAP_ADDRESS');
-                        }}
-                        className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-600 font-bold hover:bg-gray-50"
-                    >
-                        {t('ord_select_address')}
-                    </button>
-                )}
-            </section>
-
-            {/* Payment Method */}
-            <section className="mb-6">
-                <h3 className="flex items-center gap-2.5 font-display font-bold text-gray-900 mb-3"><span className="w-1.5 h-5 rounded-full bg-secondary-500" />{t('ord_paying_with')}</h3>
+            {/* Payment */}
+            <section className="mb-7">
+                <h3 className="font-display font-black text-gray-900 text-lg flex items-center gap-2.5 mb-3"><span className="w-1.5 h-5 rounded-full bg-secondary-500" />{t('ord_paying_with')}</h3>
                 <div className="space-y-2.5">
                     {payMethods.map(pm => {
                         const on = selectedPaymentMethod === pm.id;
                         return (
-                            <button key={pm.id} onClick={() => setSelectedPaymentMethod(pm.id as typeof selectedPaymentMethod)} className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${on ? 'border-brand-600 bg-brand-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
-                                <span className="flex items-center gap-3">
-                                    <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${on ? 'border-brand-600 bg-brand-600 text-white' : 'border-gray-300'}`}>{on && <Check className="w-3 h-3" strokeWidth={3} />}</span>
-                                    {pm.node}
-                                    <span className="font-bold text-gray-900">{pm.label}</span>
-                                </span>
+                            <button key={pm.id} onClick={() => setSelectedPaymentMethod(pm.id as typeof selectedPaymentMethod)} className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${on ? 'border-brand-600 bg-brand-50' : 'border-transparent bg-white shadow-sm hover:shadow-md'}`}>
+                                <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${on ? 'border-brand-600 bg-brand-600 text-white' : 'border-gray-300'}`}>{on && <Check className="w-3 h-3" strokeWidth={3} />}</span>
+                                {pm.node}
+                                <span className="font-bold text-gray-900">{pm.label}</span>
                             </button>
                         );
                     })}
                 </div>
             </section>
 
+            {/* Promo code */}
+            <section className="mb-7">
+                <h3 className="font-display font-black text-gray-900 text-lg flex items-center gap-2.5 mb-3"><span className="w-1.5 h-5 rounded-full bg-secondary-500" />{ar ? 'رمز الخصم' : 'Promo code'}</h3>
+                {promo ? (
+                    <div className="flex items-center justify-between gap-3 bg-green-50 border border-green-200 rounded-2xl p-4">
+                        <span className="flex items-center gap-2.5 font-bold text-green-700"><TicketPercent className="w-5 h-5" /><span dir="ltr">{promo.code}</span></span>
+                        <button onClick={() => { setPromo(null); promoRef.current = ''; }} className="text-xs font-bold text-gray-400 hover:text-red-500">{ar ? 'إزالة' : 'Remove'}</button>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2.5 bg-white border border-gray-200 rounded-2xl p-2 ps-4">
+                        <TicketPercent className="w-5 h-5 text-gray-400 shrink-0" />
+                        <input defaultValue={promoRef.current} onChange={e => { promoRef.current = e.target.value; }} placeholder={ar ? 'أدخل رمز الخصم' : 'Enter promo code'} className="flex-1 bg-transparent outline-none text-sm font-bold text-gray-800 placeholder-gray-400 min-w-0" />
+                        <button onClick={applyPromo} className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl shrink-0">{ar ? 'تطبيق' : 'Apply'}</button>
+                    </div>
+                )}
+            </section>
+
             {/* Summary breakdown */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
-                <div className="flex justify-between text-sm text-gray-500 mb-3"><span>{t('ord_total')}</span><span className="font-bold text-gray-700">{cartTotal} {t('ord_sar')}</span></div>
-                <div className="flex justify-between text-sm text-gray-500 mb-4"><span>{t('ord_delivery')}</span><span className="font-bold text-gray-700">15 {t('ord_sar')}</span></div>
-                <div className="border-t-2 border-dashed border-gray-200" />
-                <div className="flex justify-between items-center pt-4">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
+                <div className="flex justify-between text-sm text-gray-500 mb-3"><span>{ar ? 'المجموع الفرعي' : 'Subtotal'}</span><span className="font-bold text-gray-700">{subtotal.toFixed(2)} {t('ord_sar')}</span></div>
+                <div className="flex justify-between text-sm text-gray-500 mb-3"><span>{t('ord_delivery')}</span><span className="font-bold text-gray-700">{delivery.toFixed(2)} {t('ord_sar')}</span></div>
+                {promoOff > 0 && <div className="flex justify-between text-sm text-green-600 mb-3"><span>{ar ? 'خصم' : 'Discount'}</span><span className="font-bold" dir="ltr">- {promoOff.toFixed(2)} {t('ord_sar')}</span></div>}
+                <div className="border-t-2 border-dashed border-gray-200 my-1" />
+                <div className="flex justify-between items-center pt-3">
                     <span className="font-display font-black text-lg text-gray-900">{t('ord_total')}</span>
-                    <span className="font-display font-black text-2xl text-brand-700">{cartTotal + 15} {t('ord_sar')}</span>
+                    <span className="font-display font-black text-2xl text-brand-700">{total.toFixed(2)} {t('ord_sar')}</span>
                 </div>
+                <p className="text-[11px] text-gray-400 mt-1.5 text-end">{ar ? `شامل ضريبة القيمة المضافة (15%): ${vat.toFixed(2)} ر.س` : `Incl. VAT (15%): ${vat.toFixed(2)} SAR`}</p>
+            </div>
+
+            {/* disclaimers */}
+            <div className="space-y-2 mb-6 px-1">
+                <p className="text-[11px] leading-relaxed text-gray-400"><strong className="text-gray-500">{ar ? 'تنويه الحساسية: ' : 'Allergies: '}</strong>{ar ? 'إذا كان لديك أو لدى أحد ضيوفك حساسية من أي مكوّن، يُرجى التواصل معنا قبل تأكيد الطلب.' : 'If you or a guest has a food allergy, please contact us before confirming your order.'}</p>
+                <p className="text-[11px] leading-relaxed text-gray-400">{ar ? 'بتأكيدك للطلب فإنك توافق على شروط الخدمة وسياسة التوصيل الخاصة بالمضياف العربي.' : 'By placing your order you agree to Al-Medhyaf’s terms of service and delivery policy.'}</p>
             </div>
 
             <button
@@ -1552,7 +1702,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                 disabled={isPlacingOrder}
                 className="w-full bg-brand-600 hover:bg-brand-700 disabled:bg-gray-400 text-white font-bold py-4 rounded-full shadow-lg shadow-brand-600/25 text-lg transition-all flex justify-center items-center gap-2.5"
             >
-                {isPlacingOrder ? <Loader className="w-6 h-6 animate-spin" /> : <><ShoppingBag className="w-5 h-5" /> {t('ord_place_order')} <span className="font-black">· {cartTotal + 15} {t('ord_sar')}</span></>}
+                {isPlacingOrder ? <Loader className="w-6 h-6 animate-spin" /> : <><ShoppingBag className="w-5 h-5" /> {t('ord_place_order')} <span className="font-black">· {total.toFixed(2)} {t('ord_sar')}</span></>}
             </button>
         </div>
     );
@@ -1701,7 +1851,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
 
       {/* Top Header — only on the menu & cart (sub-pages have their own headers) */}
       {(activeTab === 'HOME' || activeTab === 'CART') && (
-      <div className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm' : 'bg-pageBg'}`}>
+      <div className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${scrolled ? 'bg-white border-b border-gray-100 shadow-sm' : 'bg-pageBg'}`}>
           <div className="container mx-auto max-w-2xl px-4 pt-2.5 pb-2.5">
 
               {/* Line 1 — branch + order-type (collapses on scroll) */}
@@ -1735,9 +1885,39 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={t('ord_search') + '...'}
                         aria-label={t('ord_search')}
-                        className="w-full h-10 bg-gray-50 border border-gray-200 rounded-full ps-11 pe-4 text-sm font-bold text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                        className="w-full h-10 bg-white border border-gray-200 rounded-full ps-11 pe-4 text-sm font-bold text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                     />
                     <Search className="w-5 h-5 text-brand-600 absolute top-2.5 start-4" />
+                </div>
+              )}
+
+              {/* Line 3 — category tabs + view toggle (menu only). Lives inside the
+                  FIXED header so it can't jitter the way a sticky element does. */}
+              {activeTab === 'HOME' && (
+                <div className="flex items-end gap-4 mt-3 -mb-2.5">
+                    <button
+                        onClick={() => setMenuView(v => (v === 'grid' ? 'list' : 'grid'))}
+                        aria-label={menuView === 'grid' ? (language === 'ar' ? 'عرض كقائمة' : 'List view') : (language === 'ar' ? 'عرض كشبكة' : 'Grid view')}
+                        className="shrink-0 pb-2.5 text-brand-600 hover:text-brand-800 active:scale-90 transition-all"
+                    >
+                        {menuView === 'grid' ? <List className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
+                    </button>
+                    <div className="flex gap-7 overflow-x-auto no-scrollbar">
+                        {Array.from(new Set(MOCK_PRODUCTS.map(p => p.category))).map(cat => {
+                            const isActive = activeCat === cat;
+                            return (
+                                <button
+                                    key={cat}
+                                    data-tab={cat}
+                                    onClick={() => scrollToCat(cat)}
+                                    className={`relative whitespace-nowrap pb-2.5 text-base transition-colors ${isActive ? 'text-brand-700 font-bold' : 'text-gray-400 font-semibold hover:text-gray-600'}`}
+                                >
+                                    {cat}
+                                    {isActive && <span className="absolute bottom-0 -inset-x-1.5 h-1 bg-secondary-500 rounded-full"></span>}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
               )}
           </div>
@@ -1746,9 +1926,9 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
 
       {/* Main Content Area */}
       <main className="min-h-screen container mx-auto max-w-2xl">
-          {activeTab === 'HOME' && <MenuScreen />}
+          {activeTab === 'HOME' && <MenuScreen t={t} language={language} searchQuery={searchQuery} menuView={menuView} favorites={favorites} toggleFavorite={toggleFavorite} onSelect={setSelectedProduct} />}
           {activeTab === 'CART' && <CartScreen />}
-          {activeTab === 'CHECKOUT' && <CheckoutScreen />}
+          {activeTab === 'CHECKOUT' && CheckoutScreen()}
           {activeTab === 'PROFILE' && <ProfileScreen />}
           {activeTab === 'ORDERS' && <OrdersScreen />}
           

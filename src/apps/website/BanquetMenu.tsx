@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Button } from '../../ui';
 import { motion } from 'motion/react';
-import { Star, ShoppingBag } from 'lucide-react';
+import { Star, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Kabsa, Grill, Mezze, Sweets, Drinks } from '../../components/icons';
 
 const fadeUp = {
@@ -10,6 +10,73 @@ const fadeUp = {
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: '-60px' },
   transition: { duration: 0.5, ease: 'easeOut' },
+};
+
+// Promotional offer banners — each has a mobile (5:4) and a web (3:1) version.
+// Full-width single slider: auto-advances and responds to the arrows.
+const OFFER_IDS = [1, 2, 3, 4, 5];
+
+const OffersCarousel: React.FC<{ onOrderNow?: () => void }> = ({ onOrderNow }) => {
+  const [i, setI] = useState(0);
+  const n = OFFER_IDS.length;
+  const startX = useRef<number | null>(null);
+  const swiped = useRef(false);
+
+  useEffect(() => {
+    const id = setInterval(() => setI(p => (p + 1) % n), 5000);
+    return () => clearInterval(id);
+  }, [n]);
+
+  const go = (d: number) => setI(p => (p + d + n) % n);
+
+  return (
+    <div className="relative">
+      <div
+        className="overflow-hidden rounded-3xl"
+        dir="ltr"
+        onPointerDown={(e) => { startX.current = e.clientX; swiped.current = false; }}
+        onPointerUp={(e) => {
+          if (startX.current != null) {
+            const dx = e.clientX - startX.current;
+            if (dx > 50) { go(-1); swiped.current = true; }
+            else if (dx < -50) { go(1); swiped.current = true; }
+          }
+          startX.current = null;
+        }}
+      >
+        <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${i * 100}%)` }}>
+          {OFFER_IDS.map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => { if (swiped.current) { swiped.current = false; return; } onOrderNow?.(); }}
+              className="w-full shrink-0 block aspect-[5/4] md:aspect-[3/1] focus:outline-none"
+            >
+              <picture>
+                <source media="(min-width: 768px)" srcSet={`offers/web/${id}.jpg`} />
+                <img src={`offers/${id}.jpg`} alt="" className="w-full h-full object-cover" draggable={false} />
+              </picture>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* arrows */}
+      <button onClick={() => go(1)} aria-label="next" className="absolute top-1/2 -translate-y-1/2 left-3 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/90 backdrop-blur text-brand-700 shadow-lg flex items-center justify-center hover:bg-white active:scale-95 transition-all">
+        <ChevronLeft className="w-6 h-6" />
+      </button>
+      <button onClick={() => go(-1)} aria-label="previous" className="absolute top-1/2 -translate-y-1/2 right-3 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/90 backdrop-blur text-brand-700 shadow-lg flex items-center justify-center hover:bg-white active:scale-95 transition-all">
+        <ChevronRight className="w-6 h-6" />
+      </button>
+
+      {/* dots */}
+      <div className="flex justify-center gap-2 mt-5">
+        {OFFER_IDS.map((_, idx) => (
+          <button key={idx} onClick={() => setI(idx)} aria-label={`slide ${idx + 1}`} className={`h-2 rounded-full transition-all ${i === idx ? 'w-7 bg-brand-600' : 'w-2 bg-brand-600/25 hover:bg-brand-600/40'}`} />
+        ))}
+      </div>
+    </div>
+  );
 };
 
 interface Dish { n: string; en: string; d: string; de: string; img: string; star?: boolean }
@@ -74,23 +141,23 @@ const BanquetMenu: React.FC<{ onOrderNow?: () => void }> = ({ onOrderNow }) => {
   const cat = categories[active];
 
   return (
-    <section className="bg-parchment text-ink py-16 md:py-24" id="banquet-menu">
+    <section className="bg-parchment text-ink pt-5 pb-16 md:pt-7 md:pb-24" id="banquet-menu">
       <div className="max-w-7xl mx-auto px-6">
-        {/* header */}
-        <motion.div {...fadeUp} className="text-center max-w-2xl mx-auto mb-10">
-          <span className="text-brand-600 font-black text-xs md:text-sm tracking-wide">{ar ? 'قائمة الولائم' : 'The Banquet Menu'}</span>
-          <h2 className="mt-2 font-display font-black text-3xl md:text-5xl text-brand-800 leading-tight">{ar ? 'أطباق الكرم العربي على مائدتك' : 'Arab generosity, on your table'}</h2>
-          <div className="ornament my-5"><span className="w-2 h-2 rotate-45 bg-secondary-500" /></div>
-          <p className="text-gray-600 leading-relaxed">{ar ? 'تشكيلة من أشهى الأطباق الشعبية والعالمية التي نقدّمها في ولائمنا — تُحضَّر طازجة وتُقدَّم بأسلوب يليق بضيوفك.' : 'A selection of the finest traditional and international dishes we serve at our banquets — freshly prepared and presented to honor your guests.'}</p>
+        {/* offers slider hero */}
+        <motion.div {...fadeUp} className="text-center mb-5">
+          <span className="text-brand-600 font-black text-xs md:text-sm tracking-wide">{ar ? 'قائمة الولائم · أحدث عروضنا' : 'The Banquet Menu · Latest offers'}</span>
+        </motion.div>
+        <motion.div {...fadeUp} className="mb-14">
+          <OffersCarousel onOrderNow={onOrderNow} />
         </motion.div>
 
-        {/* category tabs */}
-        <div className="flex flex-wrap justify-center gap-2.5 mb-10">
+        {/* category tabs — scroll on mobile, wrap & center on desktop */}
+        <div className="flex md:flex-wrap md:justify-center gap-2.5 mb-10 overflow-x-auto no-scrollbar md:overflow-visible -mx-6 px-6 md:mx-0 md:px-0">
           {categories.map((c, i) => (
             <button
               key={c.key}
               onClick={() => setActive(i)}
-              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-colors ${
+              className={`inline-flex shrink-0 whitespace-nowrap items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-colors ${
                 active === i
                   ? 'bg-brand-600 text-white shadow-md shadow-brand-600/25'
                   : 'bg-white text-brand-700 border border-[#eee1d0] hover:border-secondary-500/50 hover:text-brand-800'
