@@ -9,6 +9,7 @@ import {
   Save, Loader, Wallet, Calendar, TicketPercent, Crosshair, Gift,
   LayoutGrid, List
 } from 'lucide-react';
+import { Utensils as IcMenu, Heart as IcHeart, Bag as IcBag, Clipboard as IcOrders, User as IcUser } from '../../components/icons';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { OrderType, Product, CartItem, Branch } from '../../types';
 import Logo from '../../components/Logo';
@@ -1957,40 +1958,48 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
 
       {/* Grounded bar nav with a sliding gold spotlight */}
       <nav className="fixed bottom-0 inset-x-0 z-40 pb-safe bg-white/95 backdrop-blur-xl border-t border-gray-200 shadow-[0_-10px_30px_rgba(0,0,0,0.07)]">
-          <ul className="mx-auto max-w-2xl flex items-stretch">
-              {[
-                { key: 'HOME', icon: Utensils, label: t('ord_menu'), active: activeTab === 'HOME', onClick: () => setActiveTab('HOME') },
-                { key: 'FAVORITES', icon: Heart, label: t('ord_favorites'), active: activeTab === 'FAVORITES', onClick: () => setActiveTab('FAVORITES') },
-                { key: 'CART', icon: ShoppingBag, label: t('ord_cart'), active: activeTab === 'CART', onClick: () => setActiveTab('CART'), badge: cart.length },
-                { key: 'ORDERS', icon: Package, label: t('ord_track'), active: ['ORDERS', 'ORDER_DETAILS'].includes(activeTab), onClick: () => setActiveTab('ORDERS') },
-                { key: 'PROFILE', icon: User, label: t('ord_profile'), active: ['PROFILE', 'ADDRESSES', 'PAYMENTS', 'SETTINGS', 'POINTS'].includes(activeTab), onClick: () => setActiveTab('PROFILE') },
-              ].map((item) => {
-                const Icon = item.icon;
+          <ul className="mx-auto max-w-2xl flex items-stretch relative">
+              {(() => {
+                const items = [
+                  { key: 'HOME', icon: IcMenu, label: t('ord_menu'), active: activeTab === 'HOME', onClick: () => setActiveTab('HOME') },
+                  { key: 'FAVORITES', icon: IcHeart, label: t('ord_favorites'), active: activeTab === 'FAVORITES', onClick: () => setActiveTab('FAVORITES') },
+                  { key: 'CART', icon: IcBag, label: t('ord_cart'), active: activeTab === 'CART', onClick: () => setActiveTab('CART'), badge: cart.length },
+                  { key: 'ORDERS', icon: IcOrders, label: t('ord_track'), active: ['ORDERS', 'ORDER_DETAILS'].includes(activeTab), onClick: () => setActiveTab('ORDERS') },
+                  { key: 'PROFILE', icon: IcUser, label: t('ord_profile'), active: ['PROFILE', 'ADDRESSES', 'PAYMENTS', 'SETTINGS', 'POINTS'].includes(activeTab), onClick: () => setActiveTab('PROFILE') },
+                ] as const;
+                const ai = Math.max(0, items.findIndex(it => it.active));
+                const slot = dir === 'rtl' ? items.length - 1 - ai : ai; // physical column (flex reverses in RTL)
                 return (
-                  <li key={item.key} className="flex-1">
-                    <button
-                      onClick={item.onClick}
-                      aria-label={item.label}
-                      className="relative w-full flex flex-col items-center justify-center gap-1 py-2.5"
-                    >
-                      {item.active && (
-                        <motion.span
-                          layoutId="nav-spotlight"
-                          transition={{ type: 'spring', stiffness: 500, damping: 34 }}
-                          className="absolute inset-x-2 inset-y-1 bg-secondary-500 rounded-2xl shadow-md shadow-secondary-500/30"
-                        />
-                      )}
-                      <span className="relative">
-                        <Icon className={`w-6 h-6 transition-colors ${item.active ? 'text-ink' : 'text-gray-400'}`} />
-                        {item.badge ? (
-                          <span className="absolute -top-1.5 -end-2 bg-brand-600 text-white text-[10px] font-black min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full border-2 border-white">{item.badge}</span>
-                        ) : null}
-                      </span>
-                      <span className={`relative text-[11px] font-bold transition-colors ${item.active ? 'text-ink' : 'text-gray-400'}`}>{item.label}</span>
-                    </button>
-                  </li>
+                  <>
+                    {/* single sliding spotlight — animates only when the active tab changes */}
+                    <span
+                      aria-hidden
+                      className="absolute top-1 bottom-1 rounded-2xl bg-secondary-500 shadow-md shadow-secondary-500/30 transition-[left] duration-300 ease-out"
+                      style={{ width: 'calc(20% - 16px)', left: `calc(${slot * 20}% + 8px)` }}
+                    />
+                    {items.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <li key={item.key} className="flex-1 relative">
+                          <button
+                            onClick={item.onClick}
+                            aria-label={item.label}
+                            className="relative w-full flex flex-col items-center justify-center gap-1 py-2.5"
+                          >
+                            <span className="relative">
+                              <Icon className={`w-6 h-6 transition-colors ${item.active ? 'text-ink' : 'text-gray-400'}`} />
+                              {(item as { badge?: number }).badge ? (
+                                <span className="absolute -top-1.5 -end-2 bg-brand-600 text-white text-[10px] font-black min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full border-2 border-white">{(item as { badge?: number }).badge}</span>
+                              ) : null}
+                            </span>
+                            <span className={`relative text-[11px] font-bold transition-colors ${item.active ? 'text-ink' : 'text-gray-400'}`}>{item.label}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </>
                 );
-              })}
+              })()}
           </ul>
       </nav>
 
