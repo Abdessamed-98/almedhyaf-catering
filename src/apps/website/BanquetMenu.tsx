@@ -32,7 +32,7 @@ const OffersCarousel: React.FC<{ onOrderNow?: () => void }> = ({ onOrderNow }) =
   return (
     <div className="relative">
       <div
-        className="overflow-hidden rounded-3xl"
+        className="overflow-hidden rounded-3xl touch-pan-y"
         dir="ltr"
         onPointerDown={(e) => { startX.current = e.clientX; swiped.current = false; }}
         onPointerUp={(e) => {
@@ -61,11 +61,11 @@ const OffersCarousel: React.FC<{ onOrderNow?: () => void }> = ({ onOrderNow }) =
         </div>
       </div>
 
-      {/* arrows */}
-      <button onClick={() => go(1)} aria-label="next" className="absolute top-1/2 -translate-y-1/2 left-3 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/90 backdrop-blur text-brand-700 shadow-lg flex items-center justify-center hover:bg-white active:scale-95 transition-all">
+      {/* arrows (desktop only — mobile uses swipe + dots) */}
+      <button onClick={() => go(1)} aria-label="next" className="hidden md:flex absolute top-1/2 -translate-y-1/2 left-3 w-12 h-12 rounded-full bg-white/90 backdrop-blur text-brand-700 shadow-lg items-center justify-center hover:bg-white active:scale-95 transition-all">
         <ChevronLeft className="w-6 h-6" />
       </button>
-      <button onClick={() => go(-1)} aria-label="previous" className="absolute top-1/2 -translate-y-1/2 right-3 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/90 backdrop-blur text-brand-700 shadow-lg flex items-center justify-center hover:bg-white active:scale-95 transition-all">
+      <button onClick={() => go(-1)} aria-label="previous" className="hidden md:flex absolute top-1/2 -translate-y-1/2 right-3 w-12 h-12 rounded-full bg-white/90 backdrop-blur text-brand-700 shadow-lg items-center justify-center hover:bg-white active:scale-95 transition-all">
         <ChevronRight className="w-6 h-6" />
       </button>
 
@@ -147,7 +147,7 @@ const BanquetMenu: React.FC<{ onOrderNow?: () => void }> = ({ onOrderNow }) => {
         <motion.div {...fadeUp} className="text-center mb-5">
           <span className="text-brand-600 font-black text-xs md:text-sm tracking-wide">{ar ? 'قائمة الولائم · أحدث عروضنا' : 'The Banquet Menu · Latest offers'}</span>
         </motion.div>
-        <motion.div {...fadeUp} className="mb-14">
+        <motion.div {...fadeUp} className="mb-6 md:mb-14">
           <OffersCarousel onOrderNow={onOrderNow} />
         </motion.div>
 

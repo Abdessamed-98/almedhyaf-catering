@@ -772,47 +772,55 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
 
   // --- Sub-Components ---
 
-  const OrderTypeSelectorModal = () => (
-      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4">
-          <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-3xl px-6 pb-6 pt-3 animate-slide-up">
-              <div className="flex justify-center mb-4 md:hidden"><span className="w-12 h-1.5 bg-gray-300 rounded-full"></span></div>
-              <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold">{t('ord_welcome')}</h2>
-                  <button onClick={() => setShowOrderTypeModal(false)} className="p-2 hover:bg-gray-100 rounded-full">
-                      <X className="w-5 h-5 text-gray-500" />
-                  </button>
-              </div>
+  const OrderTypeSelectorModal = () => {
+      const ar = language === 'ar';
+      const opts = [
+          { id: 'DELIVERY', label: t('ord_delivery'), desc: ar ? 'يصلك طلبك أينما كنت' : 'Brought to your door', Icon: Bike },
+          { id: 'PICKUP', label: t('ord_pickup'), desc: ar ? 'استلمه من أقرب فرع' : 'Pick up from a branch', Icon: ShoppingBag },
+          { id: 'CAR_PICKUP', label: t('ord_car'), desc: ar ? 'نسلّمك الطلب في سيارتك' : 'We bring it to your car', Icon: Car },
+          { id: 'DINE_IN', label: t('ord_dinein'), desc: ar ? 'تناوله في موقعنا' : 'Dine in at the venue', Icon: UtensilsCrossed },
+      ];
+      return (
+          <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4 animate-fade-in">
+              <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-3xl overflow-hidden animate-slide-up">
+                  {/* header */}
+                  <div className="relative px-5 pt-3 pb-3.5 border-b border-gray-100">
+                      <div className="flex justify-center mb-3 md:hidden"><span className="w-12 h-1.5 bg-gray-200 rounded-full" /></div>
+                      <h2 className="font-display font-black text-xl text-gray-900">{ar ? 'طريقة الاستلام' : 'How to get your order'}</h2>
+                      <p className="text-sm text-gray-500 mt-0.5">{ar ? 'اختر الطريقة الأنسب لطلبك' : 'Pick what suits you best'}</p>
+                      <button onClick={() => setShowOrderTypeModal(false)} aria-label={t('ord_cancel')} className="absolute top-3 end-4 w-9 h-9 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center transition-colors">
+                          <X className="w-5 h-5" />
+                      </button>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                  {[
-                      { id: 'DELIVERY', label: t('ord_delivery'), icon: Bike, color: 'bg-secondary-50 text-secondary-600' },
-                      { id: 'PICKUP', label: t('ord_pickup'), icon: ShoppingBag, color: 'bg-brand-50 text-brand-600' },
-                      { id: 'CAR_PICKUP', label: t('ord_car'), icon: Car, color: 'bg-brand-50 text-brand-600' },
-                      { id: 'DINE_IN', label: t('ord_dinein'), icon: UtensilsCrossed, color: 'bg-brand-50 text-brand-600' },
-                  ].map((type) => {
-                      const isActive = orderType === type.id;
-                      return (
-                          <button
-                              key={type.id}
-                              onClick={() => {
-                                  setOrderType(type.id as OrderType);
-                                  setShowOrderTypeModal(false);
-                              }}
-                              className={`p-4 rounded-2xl border-2 flex flex-col items-center justify-center gap-3 transition-all ${isActive ? 'border-brand-600 bg-brand-50 ring-2 ring-secondary-400/50' : 'border-gray-100 hover:border-gray-200'}`}
-                          >
-                              <div className={`p-3 rounded-full ${type.color}`}>
-                                  <type.icon className="w-6 h-6" />
-                              </div>
-                              <span className={`font-bold ${isActive ? 'text-brand-700' : 'text-gray-700'}`}>
-                                  {type.label}
-                              </span>
-                          </button>
-                      )
-                  })}
+                  {/* options — descriptive selectable rows */}
+                  <div className="p-4 space-y-2.5 max-h-[60vh] overflow-y-auto">
+                      {opts.map(o => {
+                          const on = orderType === o.id;
+                          return (
+                              <button
+                                  key={o.id}
+                                  onClick={() => { setOrderType(o.id as OrderType); setShowOrderTypeModal(false); }}
+                                  className={`w-full flex items-center gap-4 p-3.5 rounded-2xl border-2 text-start transition-all ${on ? 'border-brand-600 bg-brand-50' : 'border-gray-100 bg-white hover:border-gray-200'}`}
+                              >
+                                  <span className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${on ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                                      <o.Icon className="w-6 h-6" />
+                                  </span>
+                                  <span className="flex-1 min-w-0">
+                                      <span className={`block font-bold ${on ? 'text-brand-700' : 'text-gray-900'}`}>{o.label}</span>
+                                      <span className="block text-xs text-gray-500 mt-0.5">{o.desc}</span>
+                                  </span>
+                                  <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${on ? 'border-brand-600 bg-brand-600 text-white' : 'border-gray-300'}`}>
+                                      {on && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
+                                  </span>
+                              </button>
+                          );
+                      })}
+                  </div>
               </div>
           </div>
-      </div>
-  );
+      );
+  };
 
   const BranchSelectorModal = () => (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4">
@@ -1041,18 +1049,17 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                 <div className="bg-white border-t border-gray-100">
                   <div className="max-w-2xl mx-auto p-4">
                     <div className="flex gap-3 items-center">
-                        <div className="flex items-center bg-gray-100 rounded-full px-1.5 shrink-0">
+                        <div className="flex items-center h-12 bg-gray-100 rounded-full px-1.5 shrink-0">
                             <button onClick={() => setTempQty(Math.max(1, tempQty - 1))} aria-label="-" className="w-9 h-9 flex items-center justify-center text-gray-700 hover:text-brand-600"><Minus className="w-5 h-5" /></button>
                             <span className="font-black w-7 text-center">{tempQty}</span>
                             <button onClick={() => setTempQty(tempQty + 1)} aria-label="+" className="w-9 h-9 flex items-center justify-center text-gray-700 hover:text-brand-600"><Plus className="w-5 h-5" /></button>
                         </div>
                         <button
                             onClick={addToCart}
-                            className="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-bold py-3.5 rounded-full flex items-center justify-center gap-2.5 shadow-lg shadow-brand-600/25 transition-all"
+                            className="flex-1 min-w-0 h-12 bg-brand-600 hover:bg-brand-700 text-white font-bold px-3 rounded-full flex items-center justify-center gap-2 text-sm shadow-lg shadow-brand-600/25 transition-all"
                         >
-                            <ShoppingBag className="w-5 h-5" />
-                            <span>{t('ord_add_to_cart')}</span>
-                            <span className="font-black">· {(currentTotal * tempQty).toFixed(2)} {t('ord_sar')}</span>
+                            <span className="truncate">{t('ord_add_to_cart')}</span>
+                            <span className="font-black shrink-0 whitespace-nowrap">· {(currentTotal * tempQty).toFixed(2)} {t('ord_sar')}</span>
                         </button>
                     </div>
                   </div>
@@ -1374,9 +1381,9 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                         </div>
                         <ChevronLeft className="w-5 h-5 text-gray-300" />
                     </button>
-                    <button onClick={onBackToPortal} className="w-full p-4 flex items-center gap-3 hover:bg-red-50/50 transition-colors">
-                        <span className="w-10 h-10 rounded-full bg-red-50 text-red-500 flex items-center justify-center"><LogOut className="w-5 h-5" /></span>
-                        <span className="font-bold text-red-500">{t('ord_logout')}</span>
+                    <button onClick={onBackToPortal} className="w-full p-4 flex items-center gap-3 hover:bg-gray-50 transition-colors">
+                        <span className="w-10 h-10 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center"><LogOut className="w-5 h-5" /></span>
+                        <span className="font-bold text-gray-700">{t('ord_logout')}</span>
                     </button>
                 </div>
 
@@ -1838,7 +1845,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
           </div>
 
           {/* logout */}
-          <button onClick={onBackToPortal} className="w-full flex items-center justify-center gap-2 text-red-500 font-bold py-3.5 rounded-2xl bg-red-50 hover:bg-red-100 transition-colors">
+          <button onClick={onBackToPortal} className="w-full flex items-center justify-center gap-2 text-gray-500 font-bold py-3.5 rounded-2xl border border-gray-200 bg-white hover:border-brand-300 hover:text-brand-700 transition-colors">
               <LogOut className="w-5 h-5" />
               {t('ord_logout')}
           </button>
