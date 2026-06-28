@@ -1735,7 +1735,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
               <h2 className="text-3xl font-display font-black mb-6 text-gray-900">{t('ord_track')}</h2>
 
               {/* Tabs */}
-              <div className="flex p-1 bg-gray-100 rounded-full mb-6">
+              <div className="flex p-1 bg-white border border-gray-200 rounded-full mb-6">
                   <button onClick={() => setFilter('active')} className={`flex-1 py-2.5 text-sm font-bold rounded-full transition-all ${filter === 'active' ? 'bg-brand-600 text-white shadow-md shadow-brand-600/25' : 'text-gray-500'}`}>{t('ord_active_orders')}</button>
                   <button onClick={() => setFilter('history')} className={`flex-1 py-2.5 text-sm font-bold rounded-full transition-all ${filter === 'history' ? 'bg-brand-600 text-white shadow-md shadow-brand-600/25' : 'text-gray-500'}`}>{t('ord_past_orders')}</button>
               </div>
