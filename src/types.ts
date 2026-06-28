@@ -8,7 +8,8 @@ export type WebsitePage =
   | 'ABOUT'
   | 'NEWS'
   | 'CONTACT'
-  | 'CAREERS';
+  | 'CAREERS'
+  | 'GALLERY';
 
 export interface MenuItem {
   id: number;

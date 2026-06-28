@@ -9,7 +9,7 @@ import {
   Save, Loader, Wallet, Calendar, TicketPercent, Crosshair, Gift,
   LayoutGrid, List
 } from 'lucide-react';
-import { Utensils as IcMenu, Heart as IcHeart, Bag as IcBag, Clipboard as IcOrders, User as IcUser } from '../../components/icons';
+import { Utensils as IcMenu, Heart as IcHeart, Bag as IcBag, Clipboard as IcOrders, User as IcUser, Phone as IcPhone, Whatsapp as IcWhatsapp, Email as IcEmail } from '../../components/icons';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { OrderType, Product, CartItem, Branch } from '../../types';
 import Logo from '../../components/Logo';
@@ -311,7 +311,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
 
   // App State
   // Added POINTS to activeTab type
-  const [activeTab, setActiveTab] = useState<'HOME' | 'CART' | 'CHECKOUT' | 'PROFILE' | 'FAVORITES' | 'ORDERS' | 'ADDRESSES' | 'MAP_ADDRESS' | 'PAYMENTS' | 'SETTINGS' | 'ORDER_DETAILS' | 'POINTS'>('HOME');
+  const [activeTab, setActiveTab] = useState<'HOME' | 'CART' | 'CHECKOUT' | 'PROFILE' | 'FAVORITES' | 'ORDERS' | 'ADDRESSES' | 'MAP_ADDRESS' | 'PAYMENTS' | 'SETTINGS' | 'ORDER_DETAILS' | 'POINTS' | 'CONTACT'>('HOME');
 
   // jump to a category section (tab click)
   const scrollToCat = (cat: string) => {
@@ -1512,7 +1512,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
 
               {/* ── ملاحظات للمطبخ / Notes for the kitchen ── */}
               <section className="mb-7">
-                  <h3 className="font-display font-black text-gray-900 text-lg flex items-center gap-2.5 mb-3"><span className="w-1.5 h-5 rounded-full bg-secondary-500" />{ar ? 'ملاحظات للمطبخ' : 'Notes for the kitchen'}</h3>
+                  <h3 className="font-display font-black text-gray-900 text-lg flex items-center gap-2.5 mb-3"><span className="w-1.5 h-5 rounded-full bg-secondary-500" />{ar ? 'ملاحظات' : 'Notes'}</h3>
                   <textarea
                       defaultValue={orderNoteRef.current}
                       onChange={(e) => { orderNoteRef.current = e.target.value; }}
@@ -1809,6 +1809,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
           { Icon: ShoppingBag, label: t('ord_track'), go: () => setActiveTab('ORDERS') },
           { Icon: MapPin, label: t('ord_saved_addresses'), go: () => setActiveTab('ADDRESSES') },
           { Icon: CreditCard, label: t('ord_saved_cards'), go: () => setActiveTab('PAYMENTS') },
+          { Icon: HelpCircle, label: ar ? 'تواصل معنا' : 'Contact us', go: () => setActiveTab('CONTACT') },
           { Icon: ShieldCheck, label: t('ord_settings_privacy'), go: () => setActiveTab('SETTINGS') },
       ];
       return (
@@ -1851,6 +1852,66 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
               {t('ord_logout')}
           </button>
       </div>
+      );
+  };
+
+  const ContactScreen = () => {
+      const ar = language === 'ar';
+      const methods = [
+          { Icon: IcPhone, label: ar ? 'اتصل بنا' : 'Call us', value: '0570165050', href: 'tel:0570165050', tint: 'bg-brand-50 text-brand-600' },
+          { Icon: IcWhatsapp, label: ar ? 'واتساب' : 'WhatsApp', value: '0570165050', href: 'https://wa.me/966570165050', tint: 'bg-green-50 text-green-600' },
+          { Icon: IcEmail, label: ar ? 'البريد الإلكتروني' : 'Email', value: 'info@almedhyaf.sa', href: 'mailto:info@almedhyaf.sa', tint: 'bg-secondary-100 text-secondary-700' },
+      ];
+      return (
+          <div className="pt-6 pb-32 px-4 max-w-2xl mx-auto animate-fade-in">
+              <div className="flex items-center gap-3 mb-6">
+                  <button onClick={() => setActiveTab('PROFILE')} className="w-9 h-9 rounded-full bg-white shadow-sm border border-gray-100 hover:bg-gray-50 text-gray-600 flex items-center justify-center shrink-0">
+                      <ArrowRight className={`w-5 h-5 ${language === 'en' ? 'rotate-180' : ''}`} />
+                  </button>
+                  <h2 className="text-2xl font-display font-black text-gray-900">{ar ? 'تواصل معنا' : 'Contact us'}</h2>
+              </div>
+
+              {/* intro */}
+              <div className="rounded-2xl bg-brand-600 text-white p-5 mb-5 relative overflow-hidden">
+                  <span className="absolute -end-10 -top-10 w-40 h-40 rounded-full bg-white/10" />
+                  <div className="relative">
+                      <h3 className="font-display font-bold text-lg">{ar ? 'نسعد بخدمتك' : 'We’re here to help'}</h3>
+                      <p className="text-white/80 text-sm mt-1 leading-relaxed">{ar ? 'فريقنا جاهز للرد على استفساراتك وطلبات الإعاشة على مدار الساعة.' : 'Our team is ready around the clock for your questions and catering requests.'}</p>
+                  </div>
+              </div>
+
+              {/* contact methods */}
+              <div className="space-y-2.5 mb-2.5">
+                  {methods.map((m, i) => (
+                      <a key={i} href={m.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-white border border-gray-100 rounded-2xl shadow-sm p-4 hover:shadow-md transition-shadow">
+                          <span className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${m.tint}`}><m.Icon className="w-6 h-6" /></span>
+                          <span className="flex-1 min-w-0">
+                              <span className="block font-bold text-gray-900">{m.label}</span>
+                              <span className="block text-sm text-gray-500 mt-0.5" dir="ltr">{m.value}</span>
+                          </span>
+                          <ChevronLeft className="w-5 h-5 text-gray-300" />
+                      </a>
+                  ))}
+              </div>
+
+              {/* location + hours */}
+              <div className="space-y-2.5">
+                  <div className="flex items-center gap-4 bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+                      <span className="w-12 h-12 rounded-2xl bg-gray-100 text-gray-500 flex items-center justify-center shrink-0"><MapPin className="w-6 h-6" /></span>
+                      <span className="flex-1 min-w-0">
+                          <span className="block font-bold text-gray-900">{ar ? 'موقعنا' : 'Our location'}</span>
+                          <span className="block text-sm text-gray-500 mt-0.5">{ar ? 'مكة المكرمة، المملكة العربية السعودية' : 'Makkah, Saudi Arabia'}</span>
+                      </span>
+                  </div>
+                  <div className="flex items-center gap-4 bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+                      <span className="w-12 h-12 rounded-2xl bg-gray-100 text-gray-500 flex items-center justify-center shrink-0"><Clock className="w-6 h-6" /></span>
+                      <span className="flex-1 min-w-0">
+                          <span className="block font-bold text-gray-900">{ar ? 'ساعات العمل' : 'Working hours'}</span>
+                          <span className="block text-sm text-gray-500 mt-0.5">{ar ? 'على مدار الساعة طوال أيام الأسبوع' : '24/7, all week'}</span>
+                      </span>
+                  </div>
+              </div>
+          </div>
       );
   };
 
@@ -1938,6 +1999,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
           {activeTab === 'CART' && <CartScreen />}
           {activeTab === 'CHECKOUT' && CheckoutScreen()}
           {activeTab === 'PROFILE' && <ProfileScreen />}
+          {activeTab === 'CONTACT' && <ContactScreen />}
           {activeTab === 'ORDERS' && <OrdersScreen />}
           
           {/* Sub-Pages */}
@@ -1963,9 +2025,9 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                 const items = [
                   { key: 'HOME', icon: IcMenu, label: t('ord_menu'), active: activeTab === 'HOME', onClick: () => setActiveTab('HOME') },
                   { key: 'FAVORITES', icon: IcHeart, label: t('ord_favorites'), active: activeTab === 'FAVORITES', onClick: () => setActiveTab('FAVORITES') },
-                  { key: 'CART', icon: IcBag, label: t('ord_cart'), active: activeTab === 'CART', onClick: () => setActiveTab('CART'), badge: cart.length },
+                  { key: 'CART', icon: IcBag, label: t('ord_cart'), active: ['CART', 'CHECKOUT'].includes(activeTab), onClick: () => setActiveTab('CART'), badge: cart.length },
                   { key: 'ORDERS', icon: IcOrders, label: t('ord_track'), active: ['ORDERS', 'ORDER_DETAILS'].includes(activeTab), onClick: () => setActiveTab('ORDERS') },
-                  { key: 'PROFILE', icon: IcUser, label: t('ord_profile'), active: ['PROFILE', 'ADDRESSES', 'PAYMENTS', 'SETTINGS', 'POINTS'].includes(activeTab), onClick: () => setActiveTab('PROFILE') },
+                  { key: 'PROFILE', icon: IcUser, label: t('ord_profile'), active: ['PROFILE', 'ADDRESSES', 'PAYMENTS', 'SETTINGS', 'POINTS', 'CONTACT'].includes(activeTab), onClick: () => setActiveTab('PROFILE') },
                 ] as const;
                 const ai = Math.max(0, items.findIndex(it => it.active));
                 const slot = dir === 'rtl' ? items.length - 1 - ai : ai; // physical column (flex reverses in RTL)

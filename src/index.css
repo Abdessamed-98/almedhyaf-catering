@@ -1,3 +1,12 @@
+/* ── Somar (self-hosted, Arabic + Latin) ── */
+@font-face { font-family: 'Somar'; src: url('./assets/fonts/somar/Somar-Light.ttf') format('truetype'); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Somar'; src: url('./assets/fonts/somar/Somar-Regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Somar'; src: url('./assets/fonts/somar/Somar-Medium.ttf') format('truetype'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Somar'; src: url('./assets/fonts/somar/Somar-SemiBold.ttf') format('truetype'); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Somar'; src: url('./assets/fonts/somar/Somar-Bold.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Somar'; src: url('./assets/fonts/somar/Somar-ExtraBold.ttf') format('truetype'); font-weight: 800; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Somar'; src: url('./assets/fonts/somar/Somar-Black.ttf') format('truetype'); font-weight: 900; font-style: normal; font-display: swap; }
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,7 +16,7 @@
     -webkit-text-size-adjust: 100%;
   }
   body {
-    font-family: 'Alexandria', sans-serif;
+    font-family: 'Somar', sans-serif;
     direction: rtl;
     text-align: right;
     -webkit-font-smoothing: antialiased;

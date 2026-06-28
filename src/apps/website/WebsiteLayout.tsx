@@ -15,6 +15,7 @@ import AboutPage from './About';
 import NewsPage from './News';
 import ContactPage from './Contact';
 import CareersPage from './Careers';
+import GalleryPage from './Gallery';
 
 // Placeholder social links — replace the hrefs with the client's real handles.
 const SOCIAL_LINKS = [
@@ -46,7 +47,6 @@ const WebsiteLayout: React.FC<WebsiteLayoutProps> = ({ onBackToPortal, onOrderNo
   const navLinks: { label: string; value: WebsitePage }[] = [
     { label: t('nav_home'), value: 'HOME' },
     { label: t('nav_menu'), value: 'MENU' },
-    { label: t('nav_dishes'), value: 'DISHES' },
     { label: t('nav_branches'), value: 'BRANCHES' },
     { label: t('nav_about'), value: 'ABOUT' },
     { label: t('nav_news'), value: 'NEWS' },
@@ -64,6 +64,7 @@ const WebsiteLayout: React.FC<WebsiteLayoutProps> = ({ onBackToPortal, onOrderNo
       case 'NEWS': return <NewsPage />;
       case 'CAREERS': return <CareersPage />;
       case 'CONTACT': return <ContactPage />;
+      case 'GALLERY': return <GalleryPage onOrderNow={onOrderNow} />;
       default: return <HomePage onNavigate={(page) => setActivePage(page)} onOrderNow={onOrderNow} />;
     }
   };
@@ -83,8 +84,6 @@ const WebsiteLayout: React.FC<WebsiteLayoutProps> = ({ onBackToPortal, onOrderNo
                 <Globe className="w-3 h-3" />
                 <span className="text-xs font-bold uppercase">{language === 'ar' ? 'English' : 'عربي'}</span>
              </button>
-             <div className="w-px h-3 bg-gray-600"></div>
-             <button onClick={onBackToPortal} className="text-gray-300 hover:text-white text-xs underline">{t('staff_login')}</button>
              <div className="w-px h-3 bg-gray-600"></div>
              <div className="flex gap-3">
                 {SOCIAL_LINKS.map(({ label, href, Icon }) => (
@@ -136,7 +135,7 @@ const WebsiteLayout: React.FC<WebsiteLayoutProps> = ({ onBackToPortal, onOrderNo
 
           {/* CTA & Mobile Toggle */}
           <div className="flex items-center gap-4">
-            <button onClick={() => { setActivePage('CONTACT'); window.scrollTo(0,0); }} className="hidden md:block bg-brand-600 hover:bg-brand-700 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-brand-200 transition-all transform hover:-translate-y-0.5">
+            <button onClick={onOrderNow} className="hidden md:block bg-brand-600 hover:bg-brand-700 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-brand-200 transition-all transform hover:-translate-y-0.5">
               {t('order_now')}
             </button>
             <button 
@@ -169,7 +168,7 @@ const WebsiteLayout: React.FC<WebsiteLayoutProps> = ({ onBackToPortal, onOrderNo
                 <Globe className="w-4 h-4" />
                 <span>{language === 'ar' ? 'English' : 'عربي'}</span>
             </button>
-            <button onClick={() => { setActivePage('CONTACT'); window.scrollTo(0,0); setIsMobileMenuOpen(false); }} className="bg-brand-600 text-white py-3 rounded-lg font-bold">
+            <button onClick={() => { onOrderNow(); setIsMobileMenuOpen(false); }} className="bg-brand-600 text-white py-3 rounded-lg font-bold">
               {t('order_now')}
             </button>
           </div>

@@ -186,7 +186,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
                 {ar ? 'مطابخ وإعاشة من مكة المكرمة' : 'Kitchens & catering from Makkah'}
               </span>
               <h1 className="mt-4 font-display font-black leading-[1.15] text-2xl lg:text-3xl xl:text-4xl text-brand-800">
-                {ar ? 'إعاشة وضيافة تتحرك بدقّة الكرم العربي' : 'Catering & hospitality, delivered with the precision of Arab generosity'}
+                {ar ? 'ضيافة تتحرك بدقّة الكرم العربي' : 'Hospitality, delivered with the precision of Arab generosity'}
               </h1>
               <p className="mt-5 text-sm lg:text-base xl:text-lg text-gray-700 leading-relaxed">
                 {ar
@@ -194,7 +194,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
                   : 'From catering the Guests of Allah and hotel contracts to banquets, conferences and private occasions — Arab generosity with operational discipline.'}
               </p>
               <div className="mt-7 flex flex-col sm:flex-row flex-wrap gap-3">
-                <Button variant="gold" size="lg" onClick={quote} className="w-full sm:w-auto justify-center">{ar ? 'اطلب عرض سعر' : 'Request a Quote'}</Button>
+                <Button variant="gold" size="lg" onClick={onOrderNow} className="w-full sm:w-auto justify-center">{ar ? 'اطلب الآن' : 'Order Now'}</Button>
                 <Button variant="outline" size="lg" onClick={() => onNavigate('MENU')} className="w-full sm:w-auto justify-center">{ar ? 'استعرض الخدمات' : 'Browse services'}</Button>
               </div>
               <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -389,7 +389,17 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
       </section>
 
       {/* ===== PHOTO STRIP (full-width, drag + auto-scroll, 9:16) ===== */}
-      <section className="bg-[#f5ead9] py-6 overflow-hidden" aria-label={ar ? 'معرض الصور' : 'Photo gallery'}>
+      <section className="bg-[#f5ead9] py-12 md:py-16 overflow-hidden" aria-label={ar ? 'معرض الصور' : 'Photo gallery'}>
+        <motion.div {...fadeUp} className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row sm:items-end justify-between gap-5 mb-8">
+          <div>
+            <Kicker>{ar ? 'معرض الصور' : 'Gallery'}</Kicker>
+            <h2 className="mt-2 font-display font-black text-3xl md:text-5xl text-brand-800 leading-tight">{ar ? 'لحظات من الميدان' : 'Moments from the field'}</h2>
+          </div>
+          <Button variant="outline" size="lg" onClick={() => onNavigate('GALLERY')} className="shrink-0">
+            {ar ? 'عرض كل الصور' : 'View full gallery'}
+            <ChevronLeft className={`w-5 h-5 ${!ar ? 'rotate-180' : ''}`} />
+          </Button>
+        </motion.div>
         <PhotoStrip images={stripImages} />
       </section>
 
@@ -592,24 +602,6 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
           <div className="pointer-events-none absolute inset-y-0 left-0 w-16 md:w-32 z-10 bg-gradient-to-r from-[#fbf6ec] to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 w-16 md:w-32 z-10 bg-gradient-to-l from-[#fbf6ec] to-transparent" />
           <LogoMarquee logos={clientLogos} />
-        </div>
-      </section>
-
-      {/* ===== GALLERY (dark) ===== */}
-      <section className={`${DARK} text-white py-16 md:py-24`}>
-        <div className="max-w-7xl mx-auto px-6">
-          <motion.div {...fadeUp} className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
-            <div><Eyebrow>{ar ? 'صور من الأرشيف' : 'From the archive'}</Eyebrow><h2 className="mt-3 font-display font-black text-3xl md:text-5xl">{ar ? 'صور من الميدان' : 'Photos from the field'}</h2></div>
-            <p className="md:max-w-sm text-white/65 leading-relaxed">{ar ? 'الخدمة، المطابخ، الوجبات، والفريق' : 'Service, kitchens, meals and team'}</p>
-          </motion.div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            {gallery.map((src, i) => (
-              <button key={i} onClick={() => openImg(i)} className="group relative overflow-hidden rounded-2xl border border-white/10 aspect-[3/4]">
-                <img src={src} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                <span className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
-            ))}
-          </div>
         </div>
       </section>
 

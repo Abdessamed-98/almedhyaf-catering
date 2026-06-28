@@ -50,9 +50,9 @@ const clientTheme = {
     textSecondary: '#6B7280',
   },
   fonts: {
-    // Alexandria covers both Arabic and Latin — one family across the whole product.
-    sans: ['Alexandria', 'sans-serif'],
-    display: ['Alexandria', 'sans-serif'],
+    // Somar covers both Arabic and Latin — one family across the whole product.
+    sans: ['Somar', 'sans-serif'],
+    display: ['Somar', 'sans-serif'],
   },
   radius: {
     card: '1rem', // 16px — soft. Drop to e.g. '0.25rem' for a sharper identity.
