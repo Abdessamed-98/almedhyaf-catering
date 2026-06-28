@@ -31,7 +31,7 @@ const Branches: React.FC = () => {
       city: ar ? 'مكة المكرمة' : 'Makkah',
       address: ar ? 'حي الشوقية' : 'Al-Shoqiyah District',
       role: ar ? 'مطبخ إنتاج رئيسي للوجبات الساخنة' : 'Primary production kitchen for hot meals',
-      phone: '0570165050',
+      phone: '9200 18 116',
       lat: 21.39,
       lng: 39.86,
     },
@@ -41,7 +41,7 @@ const Branches: React.FC = () => {
       city: ar ? 'مكة المكرمة' : 'Makkah',
       address: ar ? 'حي العوالي' : 'Al-Awali District',
       role: ar ? 'مرفق تجهيز وتعبئة وتوزيع للفنادق' : 'Preparation, packaging & hotel distribution facility',
-      phone: '0570165050',
+      phone: '9200 18 116',
       lat: 21.37,
       lng: 39.86,
     },
@@ -51,7 +51,7 @@ const Branches: React.FC = () => {
       city: ar ? 'مكة المكرمة' : 'Makkah',
       address: ar ? 'حي الشرائع' : "Al-Shara'i District",
       role: ar ? 'مطبخ مواسم الحج والإفطار (معتمد HACCP)' : 'Hajj & Iftar seasonal kitchen (HACCP-certified)',
-      phone: '0570165050',
+      phone: '9200 18 116',
       lat: 21.34,
       lng: 39.92,
     },
@@ -265,7 +265,7 @@ const Branches: React.FC = () => {
               </span>
               <div>
                 <p className="font-bold">{ar ? 'الهاتف' : 'Phone'}</p>
-                <Num className="text-white/70 text-sm mt-1 block">0570165050</Num>
+                <Num className="text-white/70 text-sm mt-1 block">9200 18 116</Num>
               </div>
             </div>
           </div>
@@ -282,7 +282,7 @@ const Branches: React.FC = () => {
               <h2 className="mt-3 font-display font-black text-3xl md:text-5xl leading-tight">{ar ? 'مطابخنا جاهزة لخدمة مشروعك' : 'Our kitchens are ready to serve your project'}</h2>
               <p className="mt-4 text-white/75 text-lg leading-relaxed max-w-xl">{ar ? 'تواصل معنا لتحديد المطبخ الأنسب لموقعك وحجم وجباتك ونطاق خدمتك.' : 'Reach out to match the right kitchen to your site, meal volume and service scope.'}</p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <a href="tel:0570165050"><Button variant="gold" size="lg">{ar ? 'اتصل بنا الآن' : 'Call us now'}</Button></a>
+                <a href="tel:920018116"><Button variant="gold" size="lg">{ar ? 'اتصل بنا الآن' : 'Call us now'}</Button></a>
               </div>
             </div>
             <div className="rounded-2xl bg-[#fffaf2] text-ink p-8 shadow-2xl">
@@ -291,7 +291,7 @@ const Branches: React.FC = () => {
               <div className="space-y-4 text-sm">
                 <div className="flex justify-between items-center"><span className="text-gray-500">{ar ? 'المطابخ' : 'Kitchens'}</span><b className="text-brand-700" dir="ltr">3</b></div>
                 <div className="flex justify-between items-center"><span className="text-gray-500">{ar ? 'الموقع' : 'Location'}</span><b className="text-brand-700">{ar ? 'مكة المكرمة' : 'Makkah'}</b></div>
-                <div className="flex justify-between items-center"><span className="text-gray-500">{ar ? 'الهاتف' : 'Phone'}</span><b className="text-brand-700" dir="ltr">0570165050</b></div>
+                <div className="flex justify-between items-center"><span className="text-gray-500">{ar ? 'الهاتف' : 'Phone'}</span><b className="text-brand-700" dir="ltr">9200 18 116</b></div>
               </div>
             </div>
           </div>

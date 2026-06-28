@@ -76,7 +76,7 @@ const WebsiteLayout: React.FC<WebsiteLayoutProps> = ({ onBackToPortal, onOrderNo
       <div className="bg-brand-900 text-white py-2 px-4 hidden md:block">
         <div className="container mx-auto flex justify-between items-center text-sm">
           <div className="flex items-center gap-6">
-            <span className="flex items-center gap-2" dir="ltr"><Phone className="w-4 h-4" /> 0570165050</span>
+            <span className="flex items-center gap-2" dir="ltr"><Phone className="w-4 h-4" /> 9200 18 116</span>
             <span className="flex items-center gap-2"><Location className="w-4 h-4" /> {language === 'ar' ? 'مكة المكرمة، المملكة العربية السعودية' : 'Makkah, Saudi Arabia'}</span>
           </div>
           <div className="flex items-center gap-4">
@@ -220,7 +220,7 @@ const WebsiteLayout: React.FC<WebsiteLayoutProps> = ({ onBackToPortal, onOrderNo
             <ul className="space-y-4">
               <li className="flex items-center gap-3 text-brand-100/70">
                 <Phone className="w-5 h-5 text-secondary-400" />
-                <span dir="ltr">0570165050</span>
+                <span dir="ltr">9200 18 116</span>
               </li>
               <li className="flex items-center gap-3 text-brand-100/70">
                 <Location className="w-5 h-5 text-secondary-400" />

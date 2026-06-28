@@ -647,7 +647,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
               <div className="space-y-4 text-sm">
                 <div className="flex justify-between items-center"><span className="text-gray-500">{ar ? 'الموقع' : 'Location'}</span><b className="text-brand-700">{ar ? 'مكة المكرمة' : 'Makkah'}</b></div>
                 <div className="flex justify-between items-center"><span className="text-gray-500">{ar ? 'الخدمة' : 'Service'}</span><b className="text-brand-700" dir="ltr">Catering</b></div>
-                <div className="flex justify-between items-center"><span className="text-gray-500">{ar ? 'الهاتف' : 'Phone'}</span><b className="text-brand-700" dir="ltr">0570165050</b></div>
+                <div className="flex justify-between items-center"><span className="text-gray-500">{ar ? 'الهاتف' : 'Phone'}</span><b className="text-brand-700" dir="ltr">9200 18 116</b></div>
               </div>
               <div className="h-px bg-[#eadfce] my-6" />
               <button onClick={quote} className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-full transition-colors">{ar ? 'تواصل معنا' : 'Contact us'}</button>

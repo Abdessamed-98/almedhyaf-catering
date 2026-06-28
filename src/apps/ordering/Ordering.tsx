@@ -1858,8 +1858,8 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
   const ContactScreen = () => {
       const ar = language === 'ar';
       const methods = [
-          { Icon: IcPhone, label: ar ? 'اتصل بنا' : 'Call us', value: '0570165050', href: 'tel:0570165050', tint: 'bg-brand-50 text-brand-600' },
-          { Icon: IcWhatsapp, label: ar ? 'واتساب' : 'WhatsApp', value: '0570165050', href: 'https://wa.me/966570165050', tint: 'bg-green-50 text-green-600' },
+          { Icon: IcPhone, label: ar ? 'اتصل بنا' : 'Call us', value: '9200 18 116', href: 'tel:920018116', tint: 'bg-brand-50 text-brand-600' },
+          { Icon: IcWhatsapp, label: ar ? 'واتساب' : 'WhatsApp', value: '9200 18 116', href: 'https://wa.me/920018116', tint: 'bg-green-50 text-green-600' },
           { Icon: IcEmail, label: ar ? 'البريد الإلكتروني' : 'Email', value: 'info@almedhyaf.sa', href: 'mailto:info@almedhyaf.sa', tint: 'bg-secondary-100 text-secondary-700' },
       ];
       return (

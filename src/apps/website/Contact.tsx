@@ -33,7 +33,7 @@ const Contact: React.FC = () => {
     {
       Icon: Phone,
       label: ar ? 'الهاتف' : 'Phone',
-      value: '0570165050',
+      value: '9200 18 116',
       ltr: true,
     },
     {

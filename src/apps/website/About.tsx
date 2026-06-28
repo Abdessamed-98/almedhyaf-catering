@@ -278,7 +278,7 @@ const About: React.FC<AboutProps> = ({ onOrderNow }) => {
                 : 'We don’t just serve meals — we deliver a complete hospitality experience rooted in authenticity and driven by global standards. We look forward to being your top choice.'}</p>
               <div className="mt-8 flex flex-wrap gap-3 justify-center">
                 <Button variant="gold" size="lg" onClick={onOrderNow}>{ar ? 'طلب عرض سعر' : 'Request a Quote'}</Button>
-                <a href="tel:0570165050">
+                <a href="tel:920018116">
                   <Button size="lg" className="bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur">{ar ? 'اتصل بنا' : 'Call us'}</Button>
                 </a>
               </div>
