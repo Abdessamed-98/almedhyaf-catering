@@ -8,11 +8,7 @@ import { ToastProvider } from './ui';
 // (plus its deps like Leaflet) is only downloaded when actually opened.
 const WebsiteLayout = lazy(() => import('./apps/website/WebsiteLayout'));
 const Ordering = lazy(() => import('./apps/ordering/Ordering'));
-const MiniPOS = lazy(() => import('./apps/mini-pos/MiniPOS'));
 const POS = lazy(() => import('./apps/pos/POS'));
-const DeliveryApp = lazy(() => import('./apps/delivery/DeliveryApp'));
-// Living style guide for the design system — viewable at /#styleguide
-const Styleguide = lazy(() => import('./ui/Styleguide'));
 
 const ScreenLoader: React.FC = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -25,30 +21,20 @@ const VIEW_TO_HASH: Record<ViewState, string> = {
   WEBSITE: '#website',
   ORDERING: '#ordering',
   POS: '#pos',
-  MINI_POS: '#mini-pos',
-  DELIVERY_APP: '#delivery',
 };
 const HASH_TO_VIEW: Record<string, ViewState> = {
   '#website': 'WEBSITE',
   '#ordering': 'ORDERING',
   '#pos': 'POS',
-  '#mini-pos': 'MINI_POS',
-  '#delivery': 'DELIVERY_APP',
 };
 
 const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('PORTAL');
-  const [hash, setHash] = useState(typeof window !== 'undefined' ? window.location.hash : '');
 
   // The URL hash is the source of truth for which view is shown.
-  // e.g. /#website, /#ordering, /#pos, /#mini-pos, /#delivery ; empty hash = portal.
+  // e.g. /#website, /#ordering ; empty hash = portal.
   useEffect(() => {
-    const apply = () => {
-      const h = window.location.hash;
-      setHash(h);
-      if (h === '#styleguide') return; // handled separately below
-      setCurrentView(HASH_TO_VIEW[h] ?? 'PORTAL');
-    };
+    const apply = () => setCurrentView(HASH_TO_VIEW[window.location.hash] ?? 'PORTAL');
     apply();
     window.addEventListener('hashchange', apply);
     return () => window.removeEventListener('hashchange', apply);
@@ -64,14 +50,6 @@ const AppContent: React.FC = () => {
     }
   };
 
-  if (hash === '#styleguide') {
-    return (
-      <Suspense fallback={<ScreenLoader />}>
-        <Styleguide />
-      </Suspense>
-    );
-  }
-
   return (
     <Suspense fallback={<ScreenLoader />}>
     <div className="min-h-screen bg-gray-50">
@@ -80,8 +58,6 @@ const AppContent: React.FC = () => {
           onNavigateToWebsite={() => go('WEBSITE')}
           onNavigateToOrdering={() => go('ORDERING')}
           onNavigateToPOS={() => go('POS')}
-          onNavigateToMiniPOS={() => go('MINI_POS')}
-          onNavigateToDeliveryApp={() => go('DELIVERY_APP')}
         />
       )}
       {currentView === 'WEBSITE' && (
@@ -93,14 +69,8 @@ const AppContent: React.FC = () => {
       {currentView === 'ORDERING' && (
         <Ordering onBackToPortal={() => go('PORTAL')} />
       )}
-      {currentView === 'MINI_POS' && (
-        <MiniPOS onBackToPortal={() => go('PORTAL')} />
-      )}
       {currentView === 'POS' && (
         <POS onBackToPortal={() => go('PORTAL')} />
-      )}
-      {currentView === 'DELIVERY_APP' && (
-        <DeliveryApp onBackToPortal={() => go('PORTAL')} />
       )}
     </div>
     </Suspense>

@@ -4,12 +4,6 @@ export const en: Record<string, string> = {
     portal_title: 'Unified System Portal',
     portal_subtitle: 'Select the system to access',
     portal_rights: 'Almedhyaf Alarabi Co. All rights reserved.',
-    app_pos: 'POS System',
-    app_pos_sub: 'Point of Sale',
-    app_mini_pos: 'Mini POS',
-    app_mini_pos_sub: 'Portable POS',
-    app_delivery: 'Delivery App',
-    app_delivery_sub: 'For Drivers',
     app_client: 'Client App',
     app_client_sub: 'App Store',
     app_landing: 'Landing Page',
@@ -419,7 +413,7 @@ export const en: Record<string, string> = {
     del_nav_active: 'Active Order',
     del_nav_new: 'New Orders',
 
-    // POS / MiniPOS shared labels (status enums, fallbacks)
+    // Order status & source labels (used by the ordering app)
     ord_status_confirmed: 'Confirmed',
     status_available: 'Available',
     status_occupied: 'Occupied',

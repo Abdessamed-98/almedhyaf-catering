@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, ArrowLeft, LayoutTemplate } from 'lucide-react';
+import { Globe, ArrowLeft, LayoutTemplate, Calculator } from 'lucide-react';
 import Logo from '../../components/Logo';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -7,15 +7,12 @@ interface PortalProps {
   onNavigateToWebsite: () => void;
   onNavigateToOrdering?: () => void;
   onNavigateToPOS?: () => void;
-  onNavigateToMiniPOS?: () => void;
-  onNavigateToDeliveryApp?: () => void;
 }
 
-const Portal: React.FC<PortalProps> = ({ onNavigateToWebsite, onNavigateToOrdering, onNavigateToPOS, onNavigateToMiniPOS, onNavigateToDeliveryApp }) => {
+const Portal: React.FC<PortalProps> = ({ onNavigateToWebsite, onNavigateToOrdering, onNavigateToPOS }) => {
   const { t, toggleLanguage, language } = useLanguage();
 
   // Portal surfaces the company website + the Ordering app.
-  // (POS / Mini-POS / Delivery stay in the codebase as extras, hidden.)
   const apps = [
     {
       title: t('app_landing'),
@@ -31,6 +28,13 @@ const Portal: React.FC<PortalProps> = ({ onNavigateToWebsite, onNavigateToOrderi
       tile: 'bg-secondary-500 text-ink',
       action: onNavigateToOrdering || (() => alert(t('loading_redirect'))),
       primary: true,
+    },
+    {
+      title: language === 'ar' ? 'نقطة البيع' : 'Point of Sale',
+      subtitle: language === 'ar' ? 'الكاشير' : 'Cashier',
+      icon: <Calculator className="w-7 h-7" />,
+      tile: 'bg-ink text-white',
+      action: onNavigateToPOS || (() => alert(t('loading_redirect'))),
     },
   ];
 

@@ -103,3 +103,33 @@
 .robo-eyes{animation:roboBlink 4.5s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
 .robo-antenna{animation:roboAntenna 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
 @media (prefers-reduced-motion: reduce){.robo-bob,.robo-eyes,.robo-antenna{animation:none}}
+
+/* ── Custom scrollbars (thin, brand-tinted, rounded) ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 18, 18, 0.28) transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: rgba(128, 18, 18, 0.25);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 18, 18, 0.45);
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-corner { background: transparent; }
+/* keep the hide-scrollbar utility working */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ── Print: only the POS receipt ── */
+@media print {
+  body * { visibility: hidden; }
+  .pos-receipt, .pos-receipt * { visibility: visible; }
+  .pos-receipt { position: fixed; inset: 0 auto auto 0; width: 80mm; max-height: none; overflow: visible; border-radius: 0; box-shadow: none; padding: 6mm; }
+  .no-print { display: none !important; }
+}

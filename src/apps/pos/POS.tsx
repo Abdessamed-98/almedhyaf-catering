@@ -1,1710 +1,778 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import {
-  LayoutGrid,
-  ShoppingBag,
-  Clock,
-  PauseCircle,
-  ChefHat,
-  Printer,
-  Search,
-  Plus,
-  Minus,
-  Trash2,
-  ArrowLeft,
-  Utensils,
-  MapPin,
-  Smartphone,
-  Globe,
-  Phone,
-  User,
-  CheckCircle,
-  XCircle,
-  X,
-  Filter,
-  Settings,
-  LogOut,
-  RotateCw
-} from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { Search, Plus, Minus, Trash2, X, Check, Banknote, CreditCard, Smartphone, Printer, Utensils, ShoppingBag, Bike, ChevronLeft, TicketPercent, UserPlus, Hash, Users, User, Phone, Clock, Wallet, ArrowDownLeft, ArrowUpRight, Grid2x2, Grid3x3, AlignJustify } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import {
-  Button,
-  Card,
-  SectionHeader,
-  Ornament,
-  Pill,
-  Badge,
-  PriceTag,
-  Field,
-  Input,
-  Textarea,
-  QtyStepper,
-  Sheet,
-  EmptyState,
-  useToast,
-} from '../../ui';
-import { 
-  POSOrder, 
-  CartItem, 
-  Product, 
-  Table, 
-  Floor, 
-  Room, 
-  OrderSource, 
-  OrderType,
-  OrderStatus,
-  LayoutWall
-} from '../../types';
-import { 
-  POS_MENU_ITEMS, 
-  FLOORS, 
-  ROOMS, 
-  TABLES, 
-  MOCK_INCOMING_ORDERS 
-} from '../../data/posData';
+import { useToast } from '../../ui';
+import { POS_MENU, POS_CATEGORIES, PosProduct } from '../../data/menu';
 
-interface POSProps {
-  onBackToPortal: () => void;
-}
+interface POSProps { onBackToPortal: () => void; }
 
-type POSView = 'TABLES' | 'ORDER_ENTRY' | 'ORDER_LIST' | 'HELD_ORDERS' | 'SETTINGS' | 'TABLE_LAYOUT';
+type OrderType = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
+type PayMethod = 'CASH' | 'MADA' | 'TRANSFER';
+interface Line { uid: string; product: PosProduct; qty: number; mods: Record<number, number[]>; unitPrice: number; modText: string; }
+interface Discount { type: 'PCT' | 'AMT'; value: number; }
+interface Cart { id: number; customer?: string; phone?: string; table?: string; lines: Line[]; orderType: OrderType; discount: Discount | null; }
+interface Sale { no: string; time: string; customer?: string; phone?: string; table?: string; orderType: OrderType; lines: Line[]; gross: number; discountAmount: number; vat: number; net: number; method: PayMethod; tendered?: number; change?: number; qr: string; }
+interface ShiftData { start: string; cashier: string; float: number; count: number; cash: number; mada: number; transfer: number; }
+interface Move { id: number; type: 'IN' | 'OUT'; amount: number; reason: string; time: string; }
 
-const GRID_SIZE = 20;
+const SELLER = 'مطبخ المضياف العربي';
+const VAT_NO = '300000000000003';
+
+// ── ZATCA QR (TLV → base64) ──
+const enc = new TextEncoder();
+const tlv = (tag: number, value: string): number[] => { const v = Array.from(enc.encode(value)); return [tag, v.length, ...v]; };
+const zatcaB64 = (time: string, total: string, vat: string): string => {
+  const bytes = [...tlv(1, SELLER), ...tlv(2, VAT_NO), ...tlv(3, time), ...tlv(4, total), ...tlv(5, vat)];
+  let bin = '';
+  bytes.forEach(b => { bin += String.fromCharCode(b); });
+  return btoa(bin);
+};
+
+const discAmount = (gross: number, d: Discount | null) => !d ? 0 : d.type === 'PCT' ? Math.round(gross * d.value / 100 * 100) / 100 : Math.min(d.value, gross);
 
 const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
-  const { t, language, toggleLanguage } = useLanguage();
+  const { language, dir } = useLanguage();
+  const ar = language === 'ar';
   const toast = useToast();
+  const sar = ar ? 'ر.س' : 'SAR';
 
-  // Localized labels for enum values shown to the user.
-  const statusLabel = (s: OrderStatus) => t('ord_status_' + s.toLowerCase());
-  const tableStatusLabel = (s: Table['status']) => t('status_' + s.toLowerCase());
-  const typeLabel = (ty: OrderType) => {
-    const map: Record<OrderType, string> = {
-      DELIVERY: 'ord_delivery', PICKUP: 'ord_pickup', CAR_PICKUP: 'ord_car', DINE_IN: 'ord_dinein',
+  const [cat, setCat] = useState('الكل');
+  const [q, setQ] = useState('');
+  const [cardSize, setCardSize] = useState<'big' | 'small' | 'text'>('small');
+  const [carts, setCarts] = useState<Cart[]>(() => Array.from({ length: 5 }, (_, i) => ({ id: i + 1, lines: [], orderType: 'DINE_IN', discount: null })));
+  const [activeId, setActiveId] = useState(1);
+  const orderNo = useRef(1);
+
+  const [modProduct, setModProduct] = useState<PosProduct | null>(null);
+  const [modSel, setModSel] = useState<Record<number, number[]>>({});
+  const [modQty, setModQty] = useState(1);
+
+  const [discOpen, setDiscOpen] = useState(false);
+  const [discType, setDiscType] = useState<'PCT' | 'AMT'>('PCT');
+  const [discValue, setDiscValue] = useState('');
+
+  const [pay, setPay] = useState(false);
+  const [method, setMethod] = useState<PayMethod>('CASH');
+  const [tendered, setTendered] = useState('');
+  const [sale, setSale] = useState<Sale | null>(null);
+  const [infoModal, setInfoModal] = useState<null | 'customer' | 'table'>(null);
+
+  // shift + cash drawer
+  const [shift, setShift] = useState<ShiftData | null>(null);
+  const [moves, setMoves] = useState<Move[]>([]);
+  const moveId = useRef(1);
+  const [shiftModal, setShiftModal] = useState(false);
+  const [drawerModal, setDrawerModal] = useState(false);
+  const [openFloat, setOpenFloat] = useState('');
+  const [drawerAction, setDrawerAction] = useState<null | 'IN' | 'OUT'>(null);
+  const [moveAmount, setMoveAmount] = useState('');
+  const [moveReason, setMoveReason] = useState('');
+
+  const cart = carts.find(c => c.id === activeId) ?? carts[0];
+  const lines = cart.lines;
+
+  const cats = ['الكل', ...POS_CATEGORIES];
+  const counts = useMemo(() => {
+    const m: Record<string, number> = { 'الكل': POS_MENU.length };
+    POS_MENU.forEach(p => { m[p.category] = (m[p.category] || 0) + 1; });
+    return m;
+  }, []);
+  const filtered = POS_MENU.filter(p => (cat === 'الكل' || p.category === cat) && (!q.trim() || p.name.includes(q)));
+
+  const patchCart = (fn: (c: Cart) => Cart) => setCarts(cs => cs.map(c => c.id === activeId ? fn(c) : c));
+
+  const sig = (id: number, mods: Record<number, number[]>) => id + ':' + Object.entries(mods).map(([g, o]) => g + '=' + [...o].sort().join(',')).sort().join('|');
+  const addLine = (p: PosProduct, mods: Record<number, number[]>, unit: number, modText: string, qty = 1) => patchCart(c => {
+    const uid = sig(p.id, mods);
+    const i = c.lines.findIndex(l => l.uid === uid);
+    if (i >= 0) { const ls = [...c.lines]; ls[i] = { ...ls[i], qty: ls[i].qty + qty }; return { ...c, lines: ls }; }
+    return { ...c, lines: [...c.lines, { uid, product: p, qty, mods, unitPrice: unit, modText }] };
+  });
+  const setQty = (uid: string, qty: number) => patchCart(c => ({ ...c, lines: qty <= 0 ? c.lines.filter(l => l.uid !== uid) : c.lines.map(l => l.uid === uid ? { ...l, qty } : l) }));
+  const clearActive = () => setCarts(cs => cs.map(c => c.id === activeId ? { id: c.id, lines: [], orderType: 'DINE_IN', discount: null } : c));
+  const setOrderType = (t: OrderType) => patchCart(c => ({ ...c, orderType: t }));
+
+  // open product → modifier sheet (or add directly)
+  const openProduct = (p: PosProduct) => {
+    if (!p.modifiers?.length) { addLine(p, {}, p.price, ''); return; }
+    const def: Record<number, number[]> = {};
+    p.modifiers.forEach(g => { if (g.required && g.max === 1) def[g.id] = [g.options[0].id]; });
+    setModSel(def);
+    setModQty(1);
+    setModProduct(p);
+  };
+  const toggleMod = (g: { id: number; max: number }, optId: number) => setModSel(s => {
+    const cur = s[g.id] || [];
+    if (g.max === 1) return { ...s, [g.id]: [optId] };
+    if (cur.includes(optId)) return { ...s, [g.id]: cur.filter(x => x !== optId) };
+    if (cur.length < g.max) return { ...s, [g.id]: [...cur, optId] };
+    return s;
+  });
+  const confirmMod = () => {
+    const p = modProduct!;
+    if (!p.modifiers!.every(g => !g.required || (modSel[g.id]?.length))) return;
+    let extra = 0; const names: string[] = [];
+    p.modifiers!.forEach(g => (modSel[g.id] || []).forEach(oid => {
+      const o = g.options.find(x => x.id === oid)!;
+      extra += o.price;
+      if (o.price > 0 || g.options.length > 1) names.push(o.name);
+    }));
+    addLine(p, modSel, p.price + extra, names.join(' · '), modQty);
+    setModProduct(null);
+  };
+
+  // totals (VAT-inclusive prices)
+  const gross = lines.reduce((s, l) => s + l.unitPrice * l.qty, 0);
+  const discountAmount = discAmount(gross, cart.discount);
+  const net = Math.max(0, Math.round((gross - discountAmount) * 100) / 100);
+  const vat = Math.round(net * 15 / 115 * 100) / 100;
+
+  const orderTypes: { id: OrderType; label: string; Icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: 'DINE_IN', label: ar ? 'في المكان' : 'Dine in', Icon: Utensils },
+    { id: 'TAKEAWAY', label: ar ? 'سفري' : 'Takeaway', Icon: ShoppingBag },
+    { id: 'DELIVERY', label: ar ? 'توصيل' : 'Delivery', Icon: Bike },
+  ];
+
+  const inits = (s?: string) => (s || '').trim().split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  const recentCustomers = [
+    { name: 'أبو محمد العتيبي', phone: '0501234567' },
+    { name: 'سارة القحطاني', phone: '0559876543' },
+    { name: 'فهد الشهري', phone: '0533219876' },
+  ];
+
+  const tableAreas = [
+    { name: ar ? 'الصالة الرئيسية' : 'Main hall', tables: [{ n: '1', s: 4 }, { n: '2', s: 4 }, { n: '3', s: 4 }, { n: '4', s: 6 }, { n: '5', s: 6 }, { n: '6', s: 2 }, { n: '7', s: 2 }, { n: '8', s: 8 }] },
+    { name: ar ? 'التراس الخارجي' : 'Terrace', tables: [{ n: '9', s: 4 }, { n: '10', s: 4 }, { n: '11', s: 6 }, { n: '12', s: 6 }] },
+    { name: ar ? 'مجالس خاصة' : 'Private majlis', tables: [{ n: 'A', s: 10 }, { n: 'B', s: 12 }] },
+  ];
+
+  // drawer / shift math
+  const drawerIn = moves.filter(m => m.type === 'IN').reduce((s, m) => s + m.amount, 0);
+  const drawerOut = moves.filter(m => m.type === 'OUT').reduce((s, m) => s + m.amount, 0);
+  const expectedCash = (shift?.float ?? 0) + (shift?.cash ?? 0) + drawerIn - drawerOut;
+  const shiftTotal = shift ? shift.cash + shift.mada + shift.transfer : 0;
+
+  const startShift = () => {
+    setShift({ start: new Date().toISOString(), cashier: ar ? 'الكاشير' : 'Cashier', float: Number(openFloat) || 0, count: 0, cash: 0, mada: 0, transfer: 0 });
+    setMoves([]);
+    setOpenFloat('');
+    toast(ar ? 'تم بدء الوردية' : 'Shift started');
+  };
+  const endShift = () => { setShift(null); setMoves([]); setShiftModal(false); toast(ar ? 'تم إغلاق الوردية' : 'Shift closed'); };
+  const openDrawer = () => toast(ar ? 'تم فتح الدرج' : 'Drawer opened');
+  const addMove = () => {
+    const amt = Number(moveAmount);
+    if (!amt || amt <= 0) return;
+    setMoves(m => [{ id: moveId.current++, type: drawerAction!, amount: amt, reason: moveReason.trim() || (drawerAction === 'IN' ? (ar ? 'إيداع' : 'Cash in') : (ar ? 'سحب' : 'Cash out')), time: new Date().toISOString() }, ...m]);
+    setMoveAmount(''); setMoveReason(''); setDrawerAction(null);
+  };
+
+  const applyDiscount = () => {
+    const v = parseFloat(discValue);
+    if (!v || v <= 0) { patchCart(c => ({ ...c, discount: null })); }
+    else patchCart(c => ({ ...c, discount: { type: discType, value: v } }));
+    setDiscOpen(false);
+  };
+
+  const confirmPay = () => {
+    const time = new Date().toISOString();
+    const no = `INV-${String(orderNo.current++).padStart(4, '0')}`;
+    const tend = method === 'CASH' && tendered ? Number(tendered) : undefined;
+    const s: Sale = {
+      no, time, customer: cart.customer, phone: cart.phone, table: cart.table, orderType: cart.orderType, lines, gross, discountAmount, vat, net, method,
+      tendered: tend, change: tend !== undefined ? Math.max(0, tend - net) : undefined,
+      qr: zatcaB64(time, net.toFixed(2), vat.toFixed(2)),
     };
-    return t(map[ty] || 'takeaway');
-  };
-  const sourceLabel = (s: OrderSource) => {
-    const map: Partial<Record<OrderSource, string>> = {
-      WEBSITE: 'source_website', APP: 'source_app', SUPPORT: 'source_support', POS: 'source_pos',
-    };
-    return map[s] ? t(map[s] as string) : s; // brand names (TALABAT, JAHEZ, HUNGERSTATION) stay as-is
-  };
-
-  const [activeView, setActiveView] = useState<POSView>('TABLES');
-  const [previousView, setPreviousView] = useState<POSView | null>(null);
-  
-  // State for Order Entry
-  const [currentOrder, setCurrentOrder] = useState<POSOrder | null>(null);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  
-  // State for Tables
-  const [selectedFloor, setSelectedFloor] = useState<number>(FLOORS[0].id);
-  const [selectedRoom, setSelectedRoom] = useState<number | null>(null);
-  const [tables, setTables] = useState<Table[]>(TABLES);
-  const [walls, setWalls] = useState<LayoutWall[]>([]);
-  const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
-  const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeHandle, setResizeHandle] = useState<string | null>(null);
-  const [initialResizeState, setInitialResizeState] = useState({ x: 0, y: 0, width: 0, height: 0, mouseX: 0, mouseY: 0 });
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [tableViewMode, setTableViewMode] = useState<'GRID' | 'LAYOUT'>('GRID');
-  
-  // State for Orders
-  const [incomingOrders, setIncomingOrders] = useState<POSOrder[]>(MOCK_INCOMING_ORDERS);
-  const [heldOrders, setHeldOrders] = useState<POSOrder[]>([]);
-  const [orderFilter, setOrderFilter] = useState<OrderSource | 'ALL'>('ALL');
-  const [orderStatusFilter, setOrderStatusFilter] = useState<'ALL' | 'PENDING' | 'CANCELLED' | 'HISTORY'>('PENDING');
-  const [heldOrderFilter, setHeldOrderFilter] = useState<OrderType | 'ALL'>('ALL');
-
-  // Product Modal State
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [tempModifiers, setTempModifiers] = useState<Record<number, number[]>>({});
-  const [tempQty, setTempQty] = useState(1);
-  const [tempNotes, setTempNotes] = useState('');
-  const [editingCartId, setEditingCartId] = useState<string | null>(null);
-
-  // Customer & Note Modal State
-  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
-  const [isOrderNoteModalOpen, setIsOrderNoteModalOpen] = useState(false);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [tempCustomerName, setTempCustomerName] = useState('');
-  const [tempOrderNote, setTempOrderNote] = useState('');
-
-  // --- Helper Functions ---
-
-  const handleAddCustomer = () => {
-    setTempCustomerName(currentOrder?.customerName || '');
-    setIsCustomerModalOpen(true);
-  };
-
-  const handleSaveCustomer = () => {
-    if (currentOrder) {
-      setCurrentOrder({ ...currentOrder, customerName: tempCustomerName });
-    }
-    setIsCustomerModalOpen(false);
-  };
-
-  const handleAddOrderNote = () => {
-    setTempOrderNote(currentOrder?.notes || '');
-    setIsOrderNoteModalOpen(true);
-  };
-
-  const handleSaveOrderNote = () => {
-    if (currentOrder) {
-      setCurrentOrder({ ...currentOrder, notes: tempOrderNote });
-    }
-    setIsOrderNoteModalOpen(false);
-  };
-
-  const handleEditCartItem = (item: CartItem) => {
-    setSelectedProduct(item.product);
-    setTempModifiers(JSON.parse(JSON.stringify(item.selectedModifiers)));
-    setTempQty(item.quantity);
-    setTempNotes(item.notes || '');
-    setEditingCartId(item.cartId);
-  };
-
-  const startNewOrder = (type: OrderType = 'TAKEAWAY', table?: Table) => {
-    const newOrder: POSOrder = {
-      id: `ord-${Date.now()}`,
-      source: 'POS',
-      type: type,
-      status: 'PENDING',
-      items: [],
-      total: 0,
-      createdAt: new Date(),
-      tableId: table?.id,
-      tableName: table?.name
-    };
-    setCurrentOrder(newOrder);
-    setCartItems([]);
-    setPreviousView('TABLES');
-    setActiveView('ORDER_ENTRY');
-  };
-
-  const addItemToCart = (product: Product, quantity: number, modifiers: Record<number, number[]>, notes: string) => {
-    setCartItems(prev => {
-      // Check if same product with same modifiers exists
-      const existingIndex = prev.findIndex(item => 
-        item.product.id === product.id && 
-        JSON.stringify(item.selectedModifiers) === JSON.stringify(modifiers) &&
-        item.notes === notes
-      );
-
-      if (existingIndex >= 0) {
-        const newCart = [...prev];
-        newCart[existingIndex].quantity += quantity;
-        return newCart;
-      }
-
-      return [...prev, { 
-        cartId: `cart-${Date.now()}-${Math.random()}`, 
-        product, 
-        quantity, 
-        selectedModifiers: modifiers,
-        notes
-      }];
+    setSale(s);
+    setShift(sh => {
+      if (!sh) return sh;
+      const k = method === 'CASH' ? 'cash' : method === 'MADA' ? 'mada' : 'transfer';
+      return { ...sh, count: sh.count + 1, [k]: sh[k] + net };
     });
+    setPay(false);
+    setTendered('');
+    clearActive();
   };
 
-  const handleProductClick = (product: Product) => {
-    if (product.modifiers && product.modifiers.length > 0) {
-      setSelectedProduct(product);
-      setTempModifiers({});
-      setTempQty(1);
-      setTempNotes('');
-    } else {
-      addItemToCart(product, 1, {}, '');
-    }
+  const cashChips = Array.from(new Set([net, Math.ceil(net / 10) * 10, Math.ceil(net / 50) * 50, Math.ceil(net / 100) * 100])).slice(0, 4);
+  const tabLabel = (c: Cart, i: number) => (c.customer && c.customer.trim()) ? c.customer : (c.table && c.table.trim()) ? (ar ? `طاولة ${c.table}` : `Table ${c.table}`) : `#${i + 1}`;
+  const lineAddons = (l: Line) => {
+    const out: { name: string; price: number }[] = [];
+    l.product.modifiers?.forEach(g => (l.mods[g.id] || []).forEach(oid => {
+      const o = g.options.find(x => x.id === oid);
+      if (o) out.push({ name: o.name, price: o.price });
+    }));
+    return out;
   };
 
-  const removeFromCart = (cartId: string) => {
-    setCartItems(prev => prev.filter(item => item.cartId !== cartId));
-  };
+  // live unit price inside the modifier sheet
+  const modExtra = modProduct ? modProduct.modifiers!.reduce((s, g) => s + (modSel[g.id] || []).reduce((t, oid) => t + (g.options.find(o => o.id === oid)?.price || 0), 0), 0) : 0;
+  const modUnit = (modProduct?.price ?? 0) + modExtra;
 
-  const updateQuantity = (cartId: string, delta: number) => {
-    setCartItems(prev => prev.map(item => {
-      if (item.cartId === cartId) {
-        const newQty = Math.max(0, item.quantity + delta);
-        return { ...item, quantity: newQty };
-      }
-      return item;
-    }).filter(item => item.quantity > 0));
-  };
+  return (
+    <div dir={dir} className="h-screen flex bg-[#f4f1ea] text-ink overflow-hidden font-sans">
 
-  const calculateItemPrice = (item: CartItem) => {
-    let price = item.product.price;
-    Object.entries(item.selectedModifiers).forEach(([groupId, optionIds]) => {
-        const group = item.product.modifiers?.find(g => g.id === Number(groupId));
-        (optionIds as number[]).forEach(optId => {
-            const opt = group?.options.find(o => o.id === optId);
-            if (opt) price += opt.price;
-        });
-    });
-    return price * item.quantity;
-  };
+      {/* ── main column (header + categories + grid) ── */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <header className="h-16 bg-white border-b border-[#eadfce] flex items-center gap-3 px-3 sm:px-4 shrink-0">
+          <button onClick={onBackToPortal} aria-label={ar ? 'خروج' : 'Exit'} className="w-10 h-10 rounded-xl hover:bg-gray-100 grid place-items-center text-gray-500 shrink-0"><ChevronLeft className={`w-6 h-6 ${ar ? 'rotate-180' : ''}`} /></button>
+          <img src="logo-mark.png" alt="" className="w-9 h-9 shrink-0" />
+          <div className="relative flex-1 max-w-xl">
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder={ar ? 'ابحث عن منتج…' : 'Search products…'} className="w-full h-11 bg-gray-50 border border-gray-200 rounded-xl ps-11 pe-4 text-sm font-semibold text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
+            <Search className="w-5 h-5 text-gray-400 absolute top-3 start-4" />
+          </div>
+          <div className="flex bg-gray-100 rounded-xl p-1 shrink-0">
+            {([['big', Grid2x2], ['small', Grid3x3], ['text', AlignJustify]] as const).map(([mode, Icon]) => (
+              <button key={mode} onClick={() => setCardSize(mode)} title={mode === 'big' ? (ar ? 'بطاقات كبيرة' : 'Big cards') : mode === 'small' ? (ar ? 'بطاقات صغيرة' : 'Small cards') : (ar ? 'بدون صور' : 'No images')} className={`w-9 h-9 rounded-lg grid place-items-center transition-colors ${cardSize === mode ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+                <Icon className="w-5 h-5" />
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setShiftModal(true)} title={ar ? 'الوردية' : 'Shift'} className="relative w-10 h-10 rounded-xl hover:bg-gray-100 grid place-items-center text-gray-500 shrink-0"><Clock className="w-5 h-5" /><span className={`absolute top-1.5 end-1.5 w-2 h-2 rounded-full ring-2 ring-white ${shift ? 'bg-green-500' : 'bg-gray-300'}`} /></button>
+          <button onClick={() => setDrawerModal(true)} title={ar ? 'درج النقود' : 'Cash drawer'} className="w-10 h-10 rounded-xl hover:bg-gray-100 grid place-items-center text-gray-500 shrink-0"><Wallet className="w-5 h-5" /></button>
+          <span className="hidden lg:inline-flex items-center gap-2 text-sm text-gray-500 font-semibold ps-1"><span className="w-2 h-2 rounded-full bg-green-500" />{ar ? 'مكة - الشرائع' : 'Makkah - Sharai'}</span>
+        </header>
 
-  const calculateTotal = () => {
-    return cartItems.reduce((sum, item) => sum + calculateItemPrice(item), 0);
-  };
-
-  const holdOrder = () => {
-    if (!currentOrder || cartItems.length === 0) return;
-    
-    const orderToHold: POSOrder = {
-      ...currentOrder,
-      items: cartItems,
-      total: calculateTotal(),
-      status: 'PENDING',
-      isHeld: true
-    };
-    
-    setHeldOrders(prev => [...prev, orderToHold]);
-    setCurrentOrder(null);
-    setCartItems([]);
-    setActiveView('TABLES'); // Or stay in ORDER_ENTRY but clear
-  };
-
-  const editOrder = (order: POSOrder) => {
-    setCurrentOrder(order);
-    setCartItems(JSON.parse(JSON.stringify(order.items))); // Deep copy items
-    setPreviousView('ORDER_LIST');
-    setActiveView('ORDER_ENTRY');
-  };
-
-  const resumeOrder = (order: POSOrder) => {
-    // Load a held order back into the active cart and remove it from the held list.
-    setCurrentOrder({ ...order, isHeld: false });
-    setCartItems(JSON.parse(JSON.stringify(order.items))); // Deep copy items
-    setHeldOrders(prev => prev.filter(o => o.id !== order.id));
-    setPreviousView('HELD_ORDERS');
-    setActiveView('ORDER_ENTRY');
-  };
-
-  const confirmOrder = () => {
-    if (!currentOrder) return;
-    
-    const updatedOrder: POSOrder = {
-      ...currentOrder,
-      items: cartItems,
-      total: calculateTotal(),
-      status: currentOrder.status === 'PENDING' ? 'CONFIRMED' : currentOrder.status,
-      isHeld: false
-    };
-
-    setIncomingOrders(prev => {
-      const exists = prev.find(o => o.id === updatedOrder.id);
-      if (exists) {
-        return prev.map(o => o.id === updatedOrder.id ? updatedOrder : o);
-      }
-      return [updatedOrder, ...prev];
-    });
-
-    toast(t('order_confirmed_kitchen'));
-    setCurrentOrder(null);
-    setCartItems([]);
-    setActiveView('ORDER_LIST');
-  };
-
-  // --- Render Components ---
-
-  const renderSidebar = () => {
-    const navBtn = (active: boolean) =>
-      `w-20 h-[88px] justify-center rounded-2xl transition-all flex flex-col items-center gap-1.5 ${
-        active
-          ? 'bg-secondary-500 text-ink shadow-lg shadow-black/30 ring-1 ring-secondary-300'
-          : 'text-secondary-200/70 hover:bg-brand-700 hover:text-white'
-      }`;
-    const isTakeawayActive =
-      activeView === 'ORDER_ENTRY' &&
-      currentOrder?.type === 'TAKEAWAY' &&
-      !currentOrder.id.startsWith('ord-web') &&
-      !currentOrder.id.startsWith('ord-app') &&
-      !currentOrder.id.startsWith('ord-talabat') &&
-      !currentOrder.id.startsWith('ord-support');
-
-    return (
-      <div className="w-24 bg-brand-800 flex flex-col items-center py-6 gap-4 border-e border-brand-900/60">
-        {/* Brand mark */}
-        <div className="flex flex-col items-center mb-2">
-          <span className="font-display text-2xl font-bold text-secondary-400 leading-none">ا</span>
-          <span className="w-6 h-px bg-secondary-500/40 mt-1.5" />
+        {/* category tabs — share the content background */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar px-3 sm:px-4 pt-3 pb-1 shrink-0">
+          {cats.map(c => {
+            const on = cat === c;
+            const label = c === 'الكل' ? (ar ? 'الكل' : 'All') : c;
+            return (
+              <button key={c} onClick={() => setCat(c)} className={`shrink-0 px-4 h-10 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors ${on ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/25' : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'}`}>
+                {label}{c !== 'الكل' && <span className={`ms-1.5 text-xs ${on ? 'text-white/70' : 'text-gray-400'}`}>{counts[c]}</span>}
+              </button>
+            );
+          })}
         </div>
 
-        <button onClick={() => setActiveView('TABLES')} className={navBtn(activeView === 'TABLES')}>
-          <LayoutGrid className="w-6 h-6" />
-          <span className="text-[10px] font-bold">{t('tables')}</span>
-        </button>
-
-        <button onClick={() => startNewOrder('TAKEAWAY')} className={navBtn(isTakeawayActive)}>
-          <ShoppingBag className="w-6 h-6" />
-          <span className="text-[10px] font-bold">{t('takeaway')}</span>
-        </button>
-
-        <button onClick={() => setActiveView('ORDER_LIST')} className={`relative ${navBtn(activeView === 'ORDER_LIST')}`}>
-          <Clock className="w-6 h-6" />
-          <span className="text-[10px] font-bold">{t('orders')}</span>
-          {incomingOrders.length > 0 && (
-            <span className="absolute top-1.5 end-2 w-3 h-3 bg-secondary-400 rounded-full border-2 border-brand-800"></span>
-          )}
-        </button>
-
-        <button onClick={() => setActiveView('HELD_ORDERS')} className={`relative ${navBtn(activeView === 'HELD_ORDERS')}`}>
-          <PauseCircle className="w-6 h-6" />
-          <span className="text-[10px] font-bold">{t('held')}</span>
-          {heldOrders.length > 0 && (
-            <span className="absolute top-1.5 end-2 w-4 h-4 bg-secondary-500 rounded-full text-[10px] text-ink flex items-center justify-center font-bold border border-brand-800">
-              {heldOrders.length}
-            </span>
-          )}
-        </button>
-
-        <div className="flex-grow" />
-
-        <button onClick={() => setActiveView('SETTINGS')} className={navBtn(activeView === 'SETTINGS')}>
-          <Settings className="w-6 h-6" />
-          <span className="text-[10px] font-bold">{t('settings')}</span>
-        </button>
-      </div>
-    );
-  };
-
-  const renderSettings = () => (
-    <div className="flex-1 bg-parchment bg-pageBg p-8 overflow-auto">
-      <SectionHeader title={t('settings')} align="start" className="mb-8" />
-
-      <Card className="p-6 max-w-md space-y-3">
-        <button
-          onClick={toggleLanguage}
-          className="w-full flex items-center justify-between p-4 bg-pageBg hover:bg-brand-50 rounded-2xl transition-colors text-ink font-bold"
-        >
-          <span>{t('ord_language')}</span>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">{language === 'ar' ? 'العربية' : 'English'}</span>
-            <Globe className="w-5 h-5 text-brand-600" />
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className={cardSize === 'big' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3' : cardSize === 'small' ? 'grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5' : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2'}>
+            {filtered.map(p => cardSize === 'text' ? (
+              <button key={p.id} onClick={() => openProduct(p)} className="group bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-300 text-start p-3 flex flex-col justify-between min-h-[76px] transition-all active:scale-[0.98]">
+                <h3 className="font-semibold text-sm text-gray-900 line-clamp-2 leading-snug">{p.name}</h3>
+                <div className="flex items-center justify-between mt-1.5">
+                  <span className="font-display font-bold text-brand-700 text-sm">{p.price} <span className="text-[10px] text-gray-400 font-semibold">{sar}</span></span>
+                  {p.modifiers?.length ? <span className="text-[9px] font-semibold text-brand-600 bg-brand-50 rounded-full px-1.5 py-0.5">{ar ? 'خيارات' : 'Opt'}</span> : null}
+                </div>
+              </button>
+            ) : (
+              <button key={p.id} onClick={() => openProduct(p)} className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-300 text-start overflow-hidden transition-all active:scale-[0.98]">
+                <div className={`relative ${cardSize === 'small' ? 'h-28' : 'h-32'} bg-gray-100`}>
+                  <img src={p.image} loading="lazy" alt="" className="w-full h-full object-cover" />
+                  {p.modifiers?.length ? <span className="absolute top-1.5 start-1.5 text-[10px] font-semibold bg-white/90 text-brand-700 rounded-full px-2 py-0.5">{ar ? 'خيارات' : 'Options'}</span> : null}
+                </div>
+                <div className={cardSize === 'small' ? 'p-2' : 'p-2.5'}>
+                  <h3 className={`font-semibold text-gray-900 line-clamp-2 leading-snug ${cardSize === 'small' ? 'text-xs h-8' : 'text-sm h-10'}`}>{p.name}</h3>
+                  <span className={`font-display font-bold text-brand-700 ${cardSize === 'small' ? 'text-sm' : 'text-base'}`}>{p.price} <span className="text-[10px] text-gray-400 font-semibold">{sar}</span></span>
+                </div>
+              </button>
+            ))}
           </div>
-        </button>
+          {filtered.length === 0 && <div className="text-center text-gray-400 py-16 font-semibold">{ar ? 'لا توجد منتجات مطابقة' : 'No matching products'}</div>}
+        </div>
+      </div>
 
-        <button
-          onClick={onBackToPortal}
-          className="w-full flex items-center justify-between p-4 bg-pageBg hover:bg-brand-50 rounded-2xl transition-colors text-ink font-bold"
-        >
-          <span>{t('return_to_portal')}</span>
-          <LogOut className="w-5 h-5 text-brand-600" />
-        </button>
-      </Card>
-    </div>
-  );
+      {/* ── order panel (multi-cart) ── */}
+      <aside className="w-[320px] xl:w-[380px] bg-white border-s border-[#eadfce] flex flex-col shrink-0">
+        {/* cart tabs — 5 fixed slots */}
+        <div className="flex items-stretch gap-1.5 p-2 pt-3 border-b border-gray-100 shrink-0">
+          {carts.map((c, i) => {
+            const on = c.id === activeId;
+            const n = c.lines.reduce((s, l) => s + l.qty, 0);
+            const filled = n > 0;
+            const OIcon = orderTypes.find(o => o.id === c.orderType)?.Icon ?? Utensils;
+            return (
+              <button key={c.id} onClick={() => setActiveId(c.id)}
+                className={`relative flex-1 min-w-0 h-11 rounded-xl flex items-center justify-center gap-1 px-1 transition-colors ${on ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/30' : filled ? 'bg-white border border-gray-200 text-gray-700 hover:border-brand-300' : 'bg-gray-50 border border-dashed border-gray-200 text-gray-400 hover:border-gray-300'}`}>
+                {filled && <span className="absolute -top-1.5 -end-1.5 min-w-[20px] h-5 px-1 rounded-full text-[11px] font-bold grid place-items-center ring-2 ring-white bg-secondary-500 text-ink">{n}</span>}
+                <span className="truncate text-sm font-bold">{tabLabel(c, i)}</span>
+                <OIcon className="w-3.5 h-3.5 shrink-0 opacity-70" />
+              </button>
+            );
+          })}
+        </div>
 
-  const renderTables = () => {
-    const filteredRooms = ROOMS.filter(r => r.floorId === selectedFloor);
-    const filteredTables = tables.filter(t => 
-      t.floorId === selectedFloor && (selectedRoom ? t.roomId === selectedRoom : true)
-    );
-    const filteredWalls = walls.filter(w => w.floorId === selectedFloor);
+        {/* customer / order type */}
+        <div className="p-3 border-b border-gray-100 shrink-0 space-y-2.5">
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => setInfoModal('customer')} className="h-10 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold hover:border-gray-300 transition-colors min-w-0">
+              <UserPlus className="w-4 h-4 text-gray-400 shrink-0" />
+              <span className={`flex-1 text-start truncate ${cart.customer?.trim() ? 'text-gray-700' : 'text-gray-400 font-normal'}`}>{cart.customer?.trim() || (ar ? 'عميل' : 'Customer')}</span>
+            </button>
+            <button onClick={() => setInfoModal('table')} className="h-10 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold hover:border-gray-300 transition-colors min-w-0">
+              <Hash className="w-4 h-4 text-gray-400 shrink-0" />
+              <span className={`flex-1 text-start truncate ${cart.table?.trim() ? 'text-gray-700' : 'text-gray-400 font-normal'}`}>{cart.table?.trim() ? (ar ? `طاولة ${cart.table}` : `Table ${cart.table}`) : (ar ? 'طاولة' : 'Table')}</span>
+            </button>
+          </div>
+          <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
+            {orderTypes.map(o => {
+              const on = cart.orderType === o.id;
+              return (
+                <button key={o.id} onClick={() => setOrderType(o.id)} className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-lg text-xs font-semibold transition-colors ${on ? 'bg-white text-brand-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                  <o.Icon className="w-5 h-5" />{o.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-    const gridStatus = (s: Table['status']) =>
-      s === 'OCCUPIED' ? 'bg-brand-50 border-2 border-brand-500 text-brand-700' :
-      s === 'RESERVED' ? 'bg-secondary-50 border-2 border-secondary-500 text-secondary-700' :
-      'bg-white border-2 border-success/60 text-green-700 hover:bg-green-50';
-
-    return (
-      <div className="flex-1 bg-parchment bg-pageBg p-8 overflow-auto flex flex-col">
-        <div className="flex flex-col gap-6 mb-8">
-          {/* Header Row */}
-          <div className="flex justify-between items-center flex-wrap gap-4">
-            <SectionHeader title={t('table_management')} align="start" />
-
-            <div className="flex items-center gap-3 flex-wrap">
-              {/* Edit Layout Button */}
-              {tableViewMode === 'LAYOUT' && (
-                <Button variant="outline" size="sm" onClick={() => setActiveView('TABLE_LAYOUT')}>
-                  <Settings className="w-4 h-4" />
-                  {t('edit_layout')}
-                </Button>
-              )}
-
-              {/* View Toggle */}
-              <div className="flex gap-2">
-                <Pill active={tableViewMode === 'LAYOUT'} onClick={() => setTableViewMode('LAYOUT')}>
-                  <span className="inline-flex items-center gap-2"><MapPin className="w-4 h-4" />{t('view_layout')}</span>
-                </Pill>
-                <Pill active={tableViewMode === 'GRID'} onClick={() => setTableViewMode('GRID')}>
-                  <span className="inline-flex items-center gap-2"><LayoutGrid className="w-4 h-4" />{t('view_grid')}</span>
-                </Pill>
+        {/* lines */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {lines.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 px-6">
+              <ShoppingBag className="w-12 h-12 mb-3 opacity-30" />
+              <p className="font-semibold">{ar ? 'أضف منتجات لبدء الطلب' : 'Add products to start an order'}</p>
+            </div>
+          ) : lines.map(l => {
+            const addons = lineAddons(l);
+            return (
+              <div key={l.uid} className="flex gap-3 bg-gray-50 rounded-xl p-2.5">
+                {/* image — fixed size, qty overlaid */}
+                <div className="relative w-28 aspect-[5/4] rounded-lg overflow-hidden shrink-0 self-start">
+                  <img src={l.product.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  <div className="absolute inset-x-0 bottom-0 h-8 bg-ink/60 backdrop-blur-sm flex items-center justify-between px-1">
+                    <button onClick={() => setQty(l.uid, l.qty - 1)} aria-label="-" className="w-7 h-7 grid place-items-center text-white active:scale-90 transition-transform">{l.qty === 1 ? <Trash2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}</button>
+                    <span className="text-white text-sm font-bold tabular-nums">{l.qty}</span>
+                    <button onClick={() => setQty(l.uid, l.qty + 1)} aria-label="+" className="w-7 h-7 grid place-items-center text-white active:scale-90 transition-transform"><Plus className="w-4 h-4" /></button>
+                  </div>
+                </div>
+                {/* content + add-ons */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h4 className="font-bold text-sm text-gray-900 truncate">{l.product.name}</h4>
+                    <span className="font-display font-bold text-brand-700 text-base shrink-0">{(l.unitPrice * l.qty).toFixed(0)} <span className="text-[10px] text-gray-400 font-semibold">{sar}</span></span>
+                  </div>
+                  {addons.length > 0 && (
+                    <div className="border-t border-dashed border-gray-200 mt-2 pt-2 space-y-1">
+                      {addons.map((a, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-xs gap-2">
+                          <span className="text-gray-600 truncate">{a.name}</span>
+                          {a.price > 0
+                            ? <span className="text-gray-800 font-semibold shrink-0" dir="ltr">+{a.price} {sar}</span>
+                            : <span className="text-gray-300 shrink-0">—</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
+            );
+          })}
+        </div>
 
-              {/* Floor Toggle */}
-              <div className="flex gap-2">
-                {FLOORS.map(floor => (
-                  <Pill
-                    key={floor.id}
-                    active={selectedFloor === floor.id}
-                    onClick={() => { setSelectedFloor(floor.id); setSelectedRoom(null); }}
-                  >
-                    {floor.name}
-                  </Pill>
+        {/* summary + pay */}
+        {lines.length > 0 && (
+          <div className="border-t border-gray-100 p-4 space-y-3 shrink-0">
+            {/* discount control */}
+            {cart.discount ? (
+              <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-2 text-sm">
+                <span className="flex items-center gap-2 font-semibold text-green-700"><TicketPercent className="w-4 h-4" />{ar ? 'خصم' : 'Discount'} {cart.discount.type === 'PCT' ? `${cart.discount.value}%` : `${cart.discount.value} ${sar}`}</span>
+                <button onClick={() => patchCart(c => ({ ...c, discount: null }))} className="text-xs font-semibold text-gray-400 hover:text-red-500">{ar ? 'إزالة' : 'Remove'}</button>
+              </div>
+            ) : (
+              <button onClick={() => { setDiscType('PCT'); setDiscValue(''); setDiscOpen(true); }} className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-dashed border-brand-300 text-brand-600 font-semibold text-sm hover:bg-brand-50 transition-colors"><TicketPercent className="w-4 h-4" />{ar ? 'إضافة خصم' : 'Add discount'}</button>
+            )}
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between text-gray-500"><span>{ar ? 'المجموع' : 'Subtotal'}</span><span className="font-semibold text-gray-700">{gross.toFixed(2)} {sar}</span></div>
+              {discountAmount > 0 && <div className="flex justify-between text-green-600"><span>{ar ? 'الخصم' : 'Discount'}</span><span className="font-semibold" dir="ltr">- {discountAmount.toFixed(2)} {sar}</span></div>}
+              <div className="flex justify-between text-gray-500"><span>{ar ? 'شامل ض.ق.م (15%)' : 'incl. VAT (15%)'}</span><span className="font-semibold text-gray-700">{vat.toFixed(2)} {sar}</span></div>
+              <div className="flex justify-between items-center pt-1.5 border-t border-dashed border-gray-200"><span className="font-display font-bold text-gray-900">{ar ? 'الإجمالي' : 'Total'}</span><span className="font-display font-bold text-xl text-brand-700">{net.toFixed(2)} {sar}</span></div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={clearActive} className="px-4 py-3 rounded-xl bg-gray-100 text-gray-600 font-semibold text-sm hover:bg-gray-200 transition-colors">{ar ? 'تفريغ' : 'Clear'}</button>
+              <button onClick={() => setPay(true)} className="flex-1 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold shadow-lg shadow-brand-600/25 flex items-center justify-center gap-2 transition-colors"><Banknote className="w-5 h-5" />{ar ? 'الدفع' : 'Pay'} · {net.toFixed(2)} {sar}</button>
+            </div>
+          </div>
+        )}
+      </aside>
+
+      {/* ── modifier sheet (fixed size, two columns) ── */}
+      {modProduct && (
+        <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setModProduct(null)}>
+          <div className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl h-[88vh] sm:h-[600px] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-gray-100 flex items-center gap-3 shrink-0">
+              <img src={modProduct.image} alt="" className="w-12 h-12 rounded-xl object-cover" />
+              <div className="flex-1 min-w-0">
+                <h2 className="font-display font-bold text-lg text-gray-900 truncate">{modProduct.name}</h2>
+                <span className="text-sm text-gray-400 font-semibold">{modProduct.price} {sar}</span>
+              </div>
+              <button onClick={() => setModProduct(null)} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center text-gray-500 hover:bg-gray-200"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="grid sm:grid-cols-2 gap-x-5 gap-y-5">
+                {modProduct.modifiers!.map(g => (
+                  <div key={g.id}>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-1.5 h-4 rounded-full bg-secondary-500" />{g.name}</h3>
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${g.required ? 'bg-brand-50 text-brand-600' : 'bg-gray-100 text-gray-400'}`}>{g.required ? (ar ? 'مطلوب' : 'Required') : (ar ? 'اختياري' : 'Optional')}</span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      {g.options.map(o => {
+                        const on = (modSel[g.id] || []).includes(o.id);
+                        return (
+                          <button key={o.id} onClick={() => toggleMod(g, o.id)} className={`flex items-center justify-between px-4 py-4 rounded-xl border-2 text-sm text-start transition-colors ${on ? 'border-brand-600 bg-brand-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                            <span className={`font-semibold ${on ? 'text-brand-700' : 'text-gray-700'}`}>{o.name}</span>
+                            {o.price > 0 && <span className={`text-xs font-semibold ${on ? 'text-brand-600' : 'text-gray-400'}`}>+{o.price}</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
-          </div>
-
-          {/* Room Filters */}
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            <Pill active={!selectedRoom} onClick={() => setSelectedRoom(null)}>{t('all_rooms')}</Pill>
-            {filteredRooms.map(room => (
-              <Pill key={room.id} active={selectedRoom === room.id} onClick={() => setSelectedRoom(room.id)}>
-                {room.name}
-              </Pill>
-            ))}
-          </div>
-        </div>
-
-        {tableViewMode === 'GRID' ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {filteredTables.map((table, i) => (
-              <motion.button
-                key={table.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(i * 0.03, 0.4), type: 'spring', stiffness: 260, damping: 24 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => startNewOrder('DINE_IN', table)}
-                className={`aspect-square rounded-3xl p-4 flex flex-col items-center justify-center gap-2 shadow-sm transition-colors hover:shadow-xl ${gridStatus(table.status)}`}
-              >
-                <div className="text-3xl font-display font-bold">{table.name}</div>
-                <div className="text-xs font-bold uppercase tracking-widest">{tableStatusLabel(table.status)}</div>
-                {table.status === 'OCCUPIED' && (
-                  <Badge tone="maroon" className="mt-1">
-                    {t('order_single')} #{table.currentOrderId}
-                  </Badge>
-                )}
-              </motion.button>
-            ))}
-          </div>
-        ) : (
-          <Card className="flex-1 relative overflow-hidden">
-            <div className="absolute inset-0 pointer-events-none opacity-5"
-                 style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
-            </div>
-
-            {/* Render Walls */}
-            {filteredWalls.map(wall => (
-              <div
-                key={wall.id}
-                style={{
-                  position: 'absolute',
-                  left: wall.x,
-                  top: wall.y,
-                  width: wall.length,
-                  height: wall.thickness,
-                  transform: `rotate(${wall.rotation}deg)`,
-                  transformOrigin: 'center',
-                  borderRadius: 9999,
-                  zIndex: 0,
-                  pointerEvents: 'none'
-                }}
-                className="bg-ink"
-              />
-            ))}
-
-            {filteredTables.map(table => (
-              <button
-                key={table.id}
-                onClick={() => startNewOrder('DINE_IN', table)}
-                style={{
-                  position: 'absolute',
-                  left: table.x,
-                  top: table.y,
-                  width: table.width,
-                  height: table.height,
-                  borderRadius: table.shape === 'ROUND' ? '50%' : '12px',
-                }}
-                className={`flex flex-col items-center justify-center border-2 shadow-sm transition-all hover:scale-105 ${gridStatus(table.status)}`}
-              >
-                <span className="font-display font-bold text-lg">{table.name}</span>
-                {table.status === 'OCCUPIED' && (
-                  <span className="text-[10px] font-bold mt-1">#{table.currentOrderId}</span>
-                )}
-              </button>
-            ))}
-          </Card>
-        )}
-      </div>
-    );
-  };
-
-  const renderProductModal = () => {
-    if (!selectedProduct) return null;
-    const basePrice = selectedProduct.price;
-    // Calculate modal total
-    let currentTotal = basePrice;
-    Object.entries(tempModifiers).forEach(([groupId, optionIds]) => {
-        const group = selectedProduct.modifiers?.find(g => g.id === Number(groupId));
-        (optionIds as number[]).forEach(optId => {
-            const opt = group?.options.find(o => o.id === optId);
-            if(opt) currentTotal += opt.price;
-        });
-    });
-
-    const confirmAddToCart = () => {
-      if (!selectedProduct) return;
-      
-      if (editingCartId) {
-        // Remove the old item first to allow merging if the updated item matches an existing one
-        setCartItems(prev => prev.filter(item => item.cartId !== editingCartId));
-        // Add the updated item (this will handle merging or creating a new item)
-        addItemToCart(selectedProduct, tempQty, tempModifiers, tempNotes);
-        setEditingCartId(null);
-      } else {
-        addItemToCart(selectedProduct, tempQty, tempModifiers, tempNotes);
-      }
-
-      setSelectedProduct(null);
-      setTempModifiers({});
-      setTempQty(1);
-      setTempNotes('');
-    };
-
-    const closeSheet = () => {
-      setSelectedProduct(null);
-      setEditingCartId(null);
-    };
-
-    return (
-      <Sheet open={!!selectedProduct} onClose={closeSheet} className="max-w-3xl">
-        <div className="flex flex-col">
-          {/* Header */}
-          <div className="px-6 pt-2 pb-5">
-            <div className="flex gap-5 items-center">
-              <div className="w-24 h-24 rounded-2xl overflow-hidden shadow-sm bg-pageBg flex-shrink-0">
-                <img src={selectedProduct.image} className="w-full h-full object-cover" alt={selectedProduct.name} />
+            <div className="p-4 border-t border-gray-100 flex items-center gap-3 shrink-0">
+              <div className="flex items-center bg-gray-100 rounded-full h-14 px-1.5 shrink-0">
+                <button onClick={() => setModQty(Math.max(1, modQty - 1))} className="w-11 h-11 rounded-full grid place-items-center text-gray-700 hover:bg-white transition-colors"><Minus className="w-5 h-5" /></button>
+                <span className="w-12 text-center font-bold text-lg">{modQty}</span>
+                <button onClick={() => setModQty(modQty + 1)} className="w-11 h-11 rounded-full grid place-items-center text-gray-700 hover:bg-white transition-colors"><Plus className="w-5 h-5" /></button>
               </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-2xl font-display font-bold text-ink mb-1 truncate">{selectedProduct.name}</h2>
-                <p className="text-gray-500 text-sm leading-relaxed line-clamp-2">{selectedProduct.description}</p>
-                <PriceTag amount={basePrice} currency={t('sar')} className="text-xl mt-2 block" />
-              </div>
-              <button onClick={closeSheet} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors self-start">
-                <X className="w-5 h-5 text-gray-600" />
-              </button>
-            </div>
-            <Ornament className="mt-5" />
-          </div>
-
-          {/* Scrollable Modifiers */}
-          <div className="px-6 pb-4 space-y-7">
-            {selectedProduct.modifiers?.map(group => (
-              <div key={group.id}>
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-display font-bold text-lg text-ink">{group.name}</h3>
-                  <Badge tone={group.min > 0 ? 'maroon' : 'muted'}>
-                    {group.min > 0 ? t('required') : t('optional')}
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {group.options.map(option => {
-                    const isSelected = tempModifiers[group.id]?.includes(option.id);
-                    return (
-                      <button
-                        key={option.id}
-                        onClick={() => {
-                          const current = tempModifiers[group.id] || [];
-                          if (group.max === 1) {
-                            // Single select
-                            setTempModifiers({ ...tempModifiers, [group.id]: [option.id] });
-                          } else {
-                            // Multi select
-                            if (isSelected) {
-                              setTempModifiers({ ...tempModifiers, [group.id]: current.filter(id => id !== option.id) });
-                            } else if (current.length < group.max) {
-                              setTempModifiers({ ...tempModifiers, [group.id]: [...current, option.id] });
-                            }
-                          }
-                        }}
-                        className={`relative p-4 rounded-2xl border-2 text-start transition-all duration-200 flex flex-col justify-between h-full ${
-                          isSelected
-                            ? 'border-brand-500 bg-brand-50 shadow-md'
-                            : 'border-gray-100 bg-white hover:border-secondary-300 hover:bg-pageBg'
-                        }`}
-                      >
-                        <div className="flex justify-between items-start w-full mb-2">
-                          <span className={`font-bold ${isSelected ? 'text-brand-900' : 'text-gray-700'}`}>{option.name}</span>
-                          {isSelected && <CheckCircle className="w-5 h-5 text-brand-600 fill-brand-100" />}
-                        </div>
-                        {option.price > 0 ? (
-                          <span className={`text-sm font-medium ${isSelected ? 'text-brand-700' : 'text-gray-500'}`}>+{option.price} {t('sar')}</span>
-                        ) : (
-                          <span className="text-sm text-gray-400">{t('free')}</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-
-            {/* Quantity + Notes */}
-            <div className="flex items-center justify-between pt-2">
-              <label className="text-sm font-bold text-gray-700 uppercase tracking-wide">{t('quantity')}</label>
-              <QtyStepper value={tempQty} onChange={setTempQty} min={1} />
-            </div>
-
-            <Field label={t('notes')} htmlFor="prod-notes" className="pt-2 border-t border-gray-100">
-              <Textarea
-                id="prod-notes"
-                value={tempNotes}
-                onChange={(e) => setTempNotes(e.target.value)}
-                rows={3}
-                placeholder={t('special_instructions')}
-              />
-            </Field>
-          </div>
-
-          {/* Footer Action */}
-          <div className="sticky bottom-0 p-5 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-            <Button variant="primary" size="lg" block onClick={confirmAddToCart} className="justify-between px-8">
-              <span>{editingCartId ? t('update') : t('add_to_cart')}</span>
-              <span>{(currentTotal * tempQty).toFixed(2)} {t('sar')}</span>
-            </Button>
-          </div>
-        </div>
-      </Sheet>
-    );
-  };
-
-  const renderOrderEntry = () => {
-    const categories = Array.from(new Set(POS_MENU_ITEMS.map(i => i.category)));
-    const filteredItems = selectedCategory === 'All' 
-      ? POS_MENU_ITEMS 
-      : POS_MENU_ITEMS.filter(i => i.category === selectedCategory);
-
-    return (
-      <div className="flex-1 flex h-screen overflow-hidden">
-        {/* Menu Grid */}
-        <div className="flex-1 bg-parchment bg-pageBg flex flex-col h-full">
-          {/* Categories */}
-          <div className="p-4 bg-white shadow-sm border-b border-gray-100 overflow-x-auto flex gap-2 items-center">
-            <button
-              onClick={() => setActiveView(previousView || 'TABLES')}
-              className="p-3 rounded-full bg-pageBg hover:bg-brand-50 text-brand-700 transition-colors flex-shrink-0"
-            >
-              <ArrowLeft className="w-5 h-5 rotate-180" />
-            </button>
-            <Pill active={selectedCategory === 'All'} onClick={() => setSelectedCategory('All')}>{t('all')}</Pill>
-            {categories.map(cat => (
-              <Pill key={cat} active={selectedCategory === cat} onClick={() => setSelectedCategory(cat)}>
-                {cat}
-              </Pill>
-            ))}
-          </div>
-
-          {/* Items Grid */}
-          <div className="flex-1 p-6 overflow-y-auto">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-              {filteredItems.map((item, i) => (
-                <motion.button
-                  key={item.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(i * 0.025, 0.4), type: 'spring', stiffness: 260, damping: 24 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleProductClick(item)}
-                  className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-col text-start group"
-                >
-                  <div className="h-32 overflow-hidden">
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                  </div>
-                  <div className="p-4 flex-1 flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-display font-bold text-ink mb-1">{item.name}</h3>
-                      <p className="text-xs text-gray-500 line-clamp-2">{item.description}</p>
-                    </div>
-                    <PriceTag amount={item.price} currency={t('sar')} className="mt-3 text-lg" />
-                  </div>
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Cart Sidebar */}
-        <div className="w-96 bg-white border-s border-gray-200 flex flex-col h-full shadow-xl z-10">
-          {/* Order Header */}
-          <div className="p-4 border-b border-gray-100 bg-brand-800 text-white">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="font-display font-bold text-lg">
-                {currentOrder?.type === 'DINE_IN' ? `${t('table_single')} ${currentOrder.tableName}` : t('order_single')}
-              </h3>
-              <Badge tone="gold">{currentOrder?.id}</Badge>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleAddCustomer}
-                className={`flex-1 py-2 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-colors ${currentOrder?.customerName ? 'bg-secondary-500 text-ink' : 'bg-brand-700 text-secondary-100 hover:bg-brand-600'}`}
-              >
-                <User className="w-3.5 h-3.5" />
-                {currentOrder?.customerName || t('add_customer')}
-              </button>
-              <button
-                onClick={handleAddOrderNote}
-                className={`flex-1 py-2 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-colors ${currentOrder?.notes ? 'bg-secondary-500 text-ink' : 'bg-brand-700 text-secondary-100 hover:bg-brand-600'}`}
-              >
-                <Utensils className="w-3.5 h-3.5" />
-                {currentOrder?.notes ? t('edit_note') : t('add_note')}
+              <button onClick={confirmMod} className="flex-1 h-14 rounded-full bg-brand-600 hover:bg-brand-700 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-brand-600/25 transition-colors">
+                <Plus className="w-5 h-5" />{ar ? 'إضافة' : 'Add'} · {(modUnit * modQty).toFixed(0)} {sar}
               </button>
             </div>
           </div>
-
-          {/* Cart Items */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-pageBg">
-            {cartItems.length === 0 ? (
-              <EmptyState icon={ShoppingBag} title={t('cart_empty')} />
-            ) : (
-              cartItems.map(item => (
-                <div
-                  key={item.cartId}
-                  className={`flex gap-3 bg-white p-3 rounded-2xl border cursor-pointer hover:shadow-md transition-all ${editingCartId === item.cartId ? 'border-brand-500 ring-1 ring-brand-500 bg-brand-50' : 'border-gray-100'}`}
-                  onClick={() => handleEditCartItem(item)}
-                >
-                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-200 flex-shrink-0">
-                    <img src={item.product.image} alt="" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between mb-1 gap-2">
-                      <span className="font-bold text-sm text-ink truncate">{item.product.name}</span>
-                      <span className="font-bold text-sm text-brand-700 whitespace-nowrap">{calculateItemPrice(item).toFixed(2)}</span>
-                    </div>
-
-                    {/* Modifiers Display */}
-                    {(Object.keys(item.selectedModifiers).length > 0 || item.notes) && (
-                      <div className="text-xs text-gray-500 mb-2 space-y-0.5 bg-pageBg p-2 rounded-xl border border-gray-100">
-                        {Object.entries(item.selectedModifiers).map(([groupId, optionIds]) => {
-                           const group = item.product.modifiers?.find(g => g.id === Number(groupId));
-                           return (optionIds as number[]).map(optId => {
-                             const opt = group?.options.find(o => o.id === optId);
-                             return opt ? <div key={optId}>• {opt.name}</div> : null;
-                           });
-                        })}
-                        {item.notes && <div className="italic text-gray-400 mt-1">"{item.notes}"</div>}
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between">
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <QtyStepper value={item.quantity} min={0} onChange={(next) => updateQuantity(item.cartId, next - item.quantity)} />
-                      </div>
-                      <button onClick={(e) => { e.stopPropagation(); removeFromCart(item.cartId); }} className="text-gray-400 hover:text-brand-600 transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Cart Actions */}
-          <div className="p-4 border-t border-gray-200 bg-white space-y-3">
-            <div className="flex justify-between items-center text-lg font-bold text-ink">
-              <span>{t('total')}</span>
-              <PriceTag amount={calculateTotal().toFixed(2)} currency={t('sar')} className="text-xl" />
-            </div>
-
-            {currentOrder?.status === 'PENDING' ? (
-              <div className="grid grid-cols-2 gap-3">
-                <Button variant="outline" block onClick={() => currentOrder && rejectOrder(currentOrder.id)}>
-                  {t('reject')}
-                </Button>
-                <Button variant="primary" block onClick={() => currentOrder && acceptOrder(currentOrder.id)}>
-                  {t('accept')}
-                </Button>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button variant="gold" block onClick={holdOrder}>
-                    <PauseCircle className="w-5 h-5" />
-                    {t('hold')}
-                  </Button>
-                  <Button variant="outline" block onClick={() => toast(t('order_sent_to_kitchen'))}>
-                    <ChefHat className="w-5 h-5" />
-                    {t('kitchen')}
-                  </Button>
-                </div>
-
-                <Button variant="primary" size="lg" block onClick={confirmOrder}>
-                  {t('pay_confirm')}
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderTableLayoutEditor = () => {
-    const floorTables = tables.filter(t => t.floorId === selectedFloor);
-    const floorWalls = walls.filter(w => w.floorId === selectedFloor);
-    const selectedTable = tables.find(t => t.id === selectedTableId);
-    const selectedWall = walls.find(w => w.id === selectedWallId);
-
-    const snapWall = (x: number, y: number, length: number, rotation: number) => {
-      const T = 10;
-      const isVertical = rotation === 90 || rotation === 270;
-
-      // Snap Length to 20k + 10 (ensure odd multiple of 10 for perfect grid fit with T=10)
-      const k_L = Math.round((length - T) / GRID_SIZE);
-      const snappedLength = Math.max(GRID_SIZE + T, k_L * GRID_SIZE + T);
-
-      let snappedX, snappedY;
-
-      if (isVertical) {
-        // Vertical: Center X on Grid, Top Cap Y on Grid
-        const centerX = x + snappedLength / 2;
-        const k_X = Math.round(centerX / GRID_SIZE);
-        snappedX = k_X * GRID_SIZE - snappedLength / 2;
-
-        const topCapY = y + T - snappedLength / 2;
-        const k_Y = Math.round(topCapY / GRID_SIZE);
-        snappedY = k_Y * GRID_SIZE - T + snappedLength / 2;
-      } else {
-        // Horizontal: Left Cap X on Grid, Spine Y on Grid
-        const leftCapX = x + T / 2;
-        const k_X = Math.round(leftCapX / GRID_SIZE);
-        snappedX = k_X * GRID_SIZE - T / 2;
-
-        const spineY = y + T / 2;
-        const k_Y = Math.round(spineY / GRID_SIZE);
-        snappedY = k_Y * GRID_SIZE - T / 2;
-      }
-
-      return { x: snappedX, y: snappedY, length: snappedLength };
-    };
-
-    const handleMouseDown = (e: React.MouseEvent, type: 'TABLE' | 'WALL', id: number | string, x: number, y: number) => {
-      if (e.button !== 0) return; // Only left click
-      e.stopPropagation();
-      
-      if (type === 'TABLE') {
-        setSelectedTableId(id as number);
-        setSelectedWallId(null);
-      } else {
-        setSelectedWallId(id as string);
-        setSelectedTableId(null);
-      }
-      setIsDragging(true);
-      setDragOffset({
-        x: e.clientX - x,
-        y: e.clientY - y
-      });
-    };
-
-    const handleResizeStart = (e: React.MouseEvent, handle: string, item: Table | LayoutWall) => {
-      e.stopPropagation();
-      setIsResizing(true);
-      setResizeHandle(handle);
-      
-      setInitialResizeState({
-        x: item.x,
-        y: item.y,
-        width: 'length' in item ? item.length : item.width,
-        height: 'thickness' in item ? item.thickness : item.height,
-        mouseX: e.clientX,
-        mouseY: e.clientY,
-        rotation: 'rotation' in item ? item.rotation : 0
-      });
-    };
-
-    const handleMouseMove = (e: React.MouseEvent) => {
-      if (isResizing && resizeHandle) {
-        const dx = e.clientX - initialResizeState.mouseX;
-        const dy = e.clientY - initialResizeState.mouseY;
-        
-        let newWidth = initialResizeState.width;
-        let newHeight = initialResizeState.height;
-        let newX = initialResizeState.x;
-        let newY = initialResizeState.y;
-
-        if (selectedWallId) {
-           const wall = walls.find(w => w.id === selectedWallId);
-           if (!wall) return;
-
-           const isVertical = wall.rotation === 90 || wall.rotation === 270;
-           
-           // Calculate new length based on drag
-           let newLength = initialResizeState.width; // width stores length in initial state
-           let dLength = 0;
-
-           if (isVertical) {
-             if (resizeHandle === 'e') {
-                // Dragging Bottom: Increase length
-                dLength = dy;
-             } else if (resizeHandle === 'w') {
-                // Dragging Top: Increase length (negative dy)
-                dLength = -dy;
-             }
-           } else {
-             // Horizontal
-             if (resizeHandle === 'e') {
-               dLength = dx;
-             } else if (resizeHandle === 'w') {
-               dLength = -dx;
-             }
-           }
-
-           // Calculate raw new length
-           let rawNewLength = newLength + dLength;
-           
-           // Snap length to 20k + 10
-           const T = 10;
-           const k_L = Math.round((rawNewLength - T) / GRID_SIZE);
-           let snappedLength = Math.max(GRID_SIZE + T, k_L * GRID_SIZE + T);
-           
-           // Calculate effective delta length
-           let effectiveDLength = snappedLength - newLength;
-
-           // Apply position shifts based on handle to keep fixed end stationary
-           if (isVertical) {
-             if (resizeHandle === 'e') {
-                // Bottom dragged: Top fixed
-                newX -= effectiveDLength / 2;
-                newY += effectiveDLength / 2;
-             } else if (resizeHandle === 'w') {
-                // Top dragged: Bottom fixed
-                newX -= effectiveDLength / 2;
-                newY -= effectiveDLength / 2;
-             }
-           } else {
-             // Horizontal
-             if (resizeHandle === 'e') {
-               // Right dragged: Left fixed. 
-               // x is unchanged for Horizontal Right Drag
-             } else if (resizeHandle === 'w') {
-               // Left dragged: Right fixed.
-               newX -= effectiveDLength;
-             }
-           }
-           
-           // Snap position to half-grid (10px) to allow for center shifts
-           // This is crucial for keeping edges aligned with the grid when length changes by odd multiples of grid size
-           // newX = Math.round(newX / (GRID_SIZE / 2)) * (GRID_SIZE / 2);
-           // newY = Math.round(newY / (GRID_SIZE / 2)) * (GRID_SIZE / 2);
-           
-           setWalls(prev => prev.map(w => 
-             w.id === selectedWallId ? { ...w, x: newX, y: newY, length: snappedLength } : w
-           ));
-           return;
-        }
-
-        const isRound = selectedTableId && tables.find(t => t.id === selectedTableId)?.shape === 'ROUND';
-
-        if (isRound) {
-          // For round tables, resize proportionally based on the handle
-          // We only support corner resizing for round tables to keep it simple
-          const delta = Math.max(Math.abs(dx), Math.abs(dy)) * (dx > 0 || dy > 0 ? 1 : -1);
-          
-          if (resizeHandle.includes('e') || resizeHandle.includes('s')) {
-             newWidth += delta;
-             newHeight += delta;
-          } else {
-             newWidth -= delta;
-             newHeight -= delta;
-             newX -= delta;
-             newY -= delta;
-          }
-        } else {
-          // Rectangle resizing
-          if (resizeHandle.includes('e')) newWidth += dx;
-          if (resizeHandle.includes('w')) {
-            newWidth -= dx;
-            newX += dx;
-          }
-          if (resizeHandle.includes('s')) newHeight += dy;
-          if (resizeHandle.includes('n')) {
-            newHeight -= dy;
-            newY += dy;
-          }
-        }
-
-        // Snap to grid
-        newWidth = Math.max(GRID_SIZE, Math.round(newWidth / GRID_SIZE) * GRID_SIZE);
-        newHeight = Math.max(GRID_SIZE, Math.round(newHeight / GRID_SIZE) * GRID_SIZE);
-        newX = Math.round(newX / GRID_SIZE) * GRID_SIZE;
-        newY = Math.round(newY / GRID_SIZE) * GRID_SIZE;
-
-        if (selectedTableId) {
-          setTables(prev => prev.map(t => 
-            t.id === selectedTableId ? { ...t, x: newX, y: newY, width: newWidth, height: isRound ? newWidth : newHeight } : t
-          ));
-        }
-      } else if (isDragging) {
-        const rawX = e.clientX - dragOffset.x;
-        const rawY = e.clientY - dragOffset.y;
-        
-        // Snap to grid (20px)
-        const newX = Math.round(rawX / GRID_SIZE) * GRID_SIZE;
-        const newY = Math.round(rawY / GRID_SIZE) * GRID_SIZE;
-        
-        if (selectedTableId) {
-          setTables(prev => prev.map(t => 
-            t.id === selectedTableId ? { ...t, x: newX, y: newY } : t
-          ));
-        } else if (selectedWallId) {
-          const wall = walls.find(w => w.id === selectedWallId);
-          if (wall) {
-            const snapped = snapWall(rawX, rawY, wall.length, wall.rotation);
-            setWalls(prev => prev.map(w => 
-              w.id === selectedWallId ? { ...w, x: snapped.x, y: snapped.y } : w
-            ));
-          }
-        }
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      setIsResizing(false);
-      setResizeHandle(null);
-    };
-
-    const addTable = () => {
-      const newTable: Table = {
-        id: Date.now(),
-        roomId: ROOMS.find(r => r.floorId === selectedFloor)?.id || 1,
-        floorId: selectedFloor,
-        name: `T-${floorTables.length + 1}`,
-        status: 'AVAILABLE',
-        x: 100,
-        y: 100,
-        width: 80,
-        height: 80,
-        shape: 'RECTANGLE'
-      };
-      setTables([...tables, newTable]);
-      setSelectedTableId(newTable.id);
-      setSelectedWallId(null);
-    };
-
-    const addWall = () => {
-      const newWall: LayoutWall = {
-        id: `wall-${Date.now()}`,
-        floorId: selectedFloor,
-        x: 100,
-        y: 100,
-        length: 100,
-        thickness: 10,
-        rotation: 0
-      };
-      setWalls([...walls, newWall]);
-      setSelectedWallId(newWall.id);
-      setSelectedTableId(null);
-    };
-
-    const updateSelectedTable = (updates: Partial<Table>) => {
-      if (!selectedTableId) return;
-      setTables(prev => prev.map(t => 
-        t.id === selectedTableId ? { ...t, ...updates } : t
-      ));
-    };
-
-    const updateSelectedWall = (updates: Partial<LayoutWall>) => {
-      if (!selectedWallId) return;
-      setWalls(prev => prev.map(w => 
-        w.id === selectedWallId ? { ...w, ...updates } : w
-      ));
-    };
-
-    const deleteSelected = () => {
-      if (selectedTableId) {
-        if (window.confirm(t('confirm_delete_table'))) {
-          setTables(prev => prev.filter(t => t.id !== selectedTableId));
-          setSelectedTableId(null);
-        }
-      } else if (selectedWallId) {
-        setWalls(prev => prev.filter(w => w.id !== selectedWallId));
-        setSelectedWallId(null);
-      }
-    };
-
-    return (
-      <div className="flex-1 flex flex-col h-screen overflow-hidden bg-pageBg" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}>
-        {/* Top Bar Controls */}
-        <div className="w-full bg-white border-b border-gray-200 p-4 flex flex-col gap-4 z-10 shadow-md h-[180px] flex-none">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <button onClick={() => setActiveView('TABLES')} className="p-2 hover:bg-brand-50 text-brand-700 rounded-full">
-                <ArrowLeft className="w-6 h-6 rotate-180" />
-              </button>
-              <h2 className="text-xl font-display font-bold text-brand-800">{t('edit_layout')}</h2>
-            </div>
-
-            {/* Floor Selection */}
-            <div className="flex flex-wrap gap-2">
-              {FLOORS.map(floor => (
-                <Pill key={floor.id} active={selectedFloor === floor.id} onClick={() => setSelectedFloor(floor.id)}>
-                  {floor.name}
-                </Pill>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex gap-4 items-start flex-wrap content-start h-full">
-            <div className="flex gap-2">
-              <Button variant="primary" size="sm" onClick={addTable}>
-                <Plus className="w-4 h-4" />
-                {t('add_table')}
-              </Button>
-              <Button variant="gold" size="sm" onClick={addWall}>
-                <Plus className="w-4 h-4" />
-                {t('add_wall')}
-              </Button>
-            </div>
-
-            <div className="w-px bg-gray-200 h-8 mx-2 hidden sm:block"></div>
-
-            {selectedTable && (
-              <div className="flex gap-4 items-end flex-1 overflow-x-auto pb-2 sm:pb-0">
-                <Field label={t('table_name')} htmlFor="tbl-name" className="min-w-[150px]">
-                  <Input
-                    id="tbl-name"
-                    type="text"
-                    value={selectedTable.name}
-                    onChange={(e) => updateSelectedTable({ name: e.target.value })}
-                    className="py-2"
-                  />
-                </Field>
-
-                {selectedTable.shape === 'ROUND' ? (
-                  <Field label={t('width')} htmlFor="tbl-w" className="min-w-[100px]">
-                    <Input
-                      id="tbl-w"
-                      type="number"
-                      value={selectedTable.width / GRID_SIZE}
-                      onChange={(e) => {
-                        const size = parseInt(e.target.value) * GRID_SIZE;
-                        updateSelectedTable({ width: size, height: size });
-                      }}
-                      className="py-2"
-                    />
-                  </Field>
-                ) : (
-                  <>
-                    <Field label={t('width')} htmlFor="tbl-w" className="min-w-[100px]">
-                      <Input
-                        id="tbl-w"
-                        type="number"
-                        value={selectedTable.width / GRID_SIZE}
-                        onChange={(e) => updateSelectedTable({ width: parseInt(e.target.value) * GRID_SIZE })}
-                        className="py-2"
-                      />
-                    </Field>
-                    <Field label={t('height')} htmlFor="tbl-h" className="min-w-[100px]">
-                      <Input
-                        id="tbl-h"
-                        type="number"
-                        value={selectedTable.height / GRID_SIZE}
-                        onChange={(e) => updateSelectedTable({ height: parseInt(e.target.value) * GRID_SIZE })}
-                        className="py-2"
-                      />
-                    </Field>
-                  </>
-                )}
-
-                <div className="min-w-[150px]">
-                  <label className="text-sm font-bold text-gray-700 mb-2 block">{t('table_shape')}</label>
-                  <div className="flex gap-2">
-                    <Pill active={selectedTable.shape === 'RECTANGLE'} onClick={() => updateSelectedTable({ shape: 'RECTANGLE' })} className="flex-1 text-xs">
-                      {t('shape_rectangle')}
-                    </Pill>
-                    <Pill active={selectedTable.shape === 'ROUND'} onClick={() => updateSelectedTable({ shape: 'ROUND' })} className="flex-1 text-xs">
-                      {t('shape_round')}
-                    </Pill>
-                  </div>
-                </div>
-
-                <Button variant="outline" size="sm" onClick={deleteSelected} aria-label={t('delete') || 'delete'}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-
-            {selectedWall && (
-              <div className="flex gap-4 items-end flex-1 overflow-x-auto pb-2 sm:pb-0">
-                <Field label={t('wall_length')} htmlFor="wall-len" className="min-w-[100px]">
-                  <Input
-                    id="wall-len"
-                    type="number"
-                    value={selectedWall.length / GRID_SIZE}
-                    onChange={(e) => updateSelectedWall({ length: parseInt(e.target.value) * GRID_SIZE })}
-                    className="py-2"
-                  />
-                </Field>
-                <div className="min-w-[150px]">
-                  <label className="text-sm font-bold text-gray-700 mb-2 block">{t('wall_rotation')}</label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    block
-                    onClick={() => updateSelectedWall({ rotation: selectedWall.rotation === 0 ? 90 : 0 })}
-                  >
-                    <RotateCw className="w-4 h-4" />
-                    {selectedWall.rotation === 0 ? t('horizontal') : t('vertical')}
-                  </Button>
-                </div>
-
-                <Button variant="outline" size="sm" onClick={deleteSelected}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Canvas Area */}
-        <div className="flex-1 relative overflow-hidden bg-white cursor-crosshair" onClick={() => { setSelectedTableId(null); setSelectedWallId(null); }}>
-          <div className="absolute inset-0 pointer-events-none opacity-10" 
-               style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
-          </div>
-          
-          {floorWalls.map(wall => (
-            <div
-              key={wall.id}
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => handleMouseDown(e, 'WALL', wall.id, wall.x, wall.y)}
-              style={{
-                position: 'absolute',
-                left: wall.x,
-                top: wall.y,
-                width: wall.length,
-                height: wall.thickness,
-                transform: `rotate(${wall.rotation}deg)`,
-                transformOrigin: 'center',
-                borderRadius: 9999,
-                cursor: isDragging && selectedWallId === wall.id ? 'grabbing' : 'grab',
-                zIndex: selectedWallId === wall.id ? 5 : 0
-              }}
-              className={`bg-gray-800 transition-shadow ${
-                selectedWallId === wall.id 
-                  ? 'shadow-xl ring-2 ring-brand-400' 
-                  : 'hover:bg-gray-700'
-              }`}
-            >
-              {selectedWallId === wall.id && (
-                <>
-                  {/* Length Handles */}
-                  {/* Horizontal Handles (for 0/180 deg) */}
-                  {(wall.rotation === 0 || wall.rotation === 180) && (
-                    <>
-                      <div
-                        onMouseDown={(e) => { e.preventDefault(); handleResizeStart(e, 'w', wall); }}
-                        className="absolute w-3 h-3 bg-white border border-brand-600 rounded-full z-20 cursor-ew-resize"
-                        style={{ top: '50%', left: -6, marginTop: -6 }}
-                      />
-                      <div
-                        onMouseDown={(e) => { e.preventDefault(); handleResizeStart(e, 'e', wall); }}
-                        className="absolute w-3 h-3 bg-white border border-brand-600 rounded-full z-20 cursor-ew-resize"
-                        style={{ top: '50%', right: -6, marginTop: -6 }}
-                      />
-                    </>
-                  )}
-                  
-                  {/* Vertical Handles (for 90/270 deg) */}
-                  {(wall.rotation === 90 || wall.rotation === 270) && (
-                    <>
-                      <div
-                        onMouseDown={(e) => { e.preventDefault(); handleResizeStart(e, 'w', wall); }}
-                        className="absolute w-3 h-3 bg-white border border-brand-600 rounded-full z-20 cursor-ns-resize"
-                        style={{ top: '50%', left: -6, marginTop: -6 }}
-                      />
-                      <div
-                        onMouseDown={(e) => { e.preventDefault(); handleResizeStart(e, 'e', wall); }}
-                        className="absolute w-3 h-3 bg-white border border-brand-600 rounded-full z-20 cursor-ns-resize"
-                        style={{ top: '50%', right: -6, marginTop: -6 }}
-                      />
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
-
-          {floorTables.map(table => (
-            <div
-              key={table.id}
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => handleMouseDown(e, 'TABLE', table.id, table.x, table.y)}
-              style={{
-                position: 'absolute',
-                left: table.x,
-                top: table.y,
-                width: table.width,
-                height: table.height,
-                borderRadius: table.shape === 'ROUND' ? '50%' : '12px',
-                cursor: isDragging && selectedTableId === table.id ? 'grabbing' : 'grab',
-                zIndex: selectedTableId === table.id ? 10 : 1
-              }}
-              className={`flex items-center justify-center border-2 shadow-sm transition-shadow ${
-                selectedTableId === table.id 
-                  ? 'border-brand-600 bg-brand-50 shadow-xl ring-2 ring-brand-200' 
-                  : 'border-gray-300 bg-white hover:border-gray-400'
-              }`}
-            >
-              <span className="font-bold text-gray-700 select-none pointer-events-none">{table.name}</span>
-              
-              {selectedTableId === table.id && (
-                <>
-                  {/* Resize Handles */}
-                  {table.shape === 'ROUND' ? (
-                    <>
-                      {['nw', 'ne', 'sw', 'se'].map(handle => (
-                        <div
-                          key={handle}
-                          onMouseDown={(e) => handleResizeStart(e, handle, table)}
-                          className="absolute w-3 h-3 bg-white border border-brand-600 rounded-full z-20"
-                          style={{
-                            top: handle.includes('n') ? -6 : undefined,
-                            bottom: handle.includes('s') ? -6 : undefined,
-                            left: handle.includes('w') ? -6 : undefined,
-                            right: handle.includes('e') ? -6 : undefined,
-                            cursor: 'nwse-resize' // Simplified cursor for round
-                          }}
-                        />
-                      ))}
-                    </>
-                  ) : (
-                    <>
-                      {['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'].map(handle => (
-                        <div
-                          key={handle}
-                          onMouseDown={(e) => handleResizeStart(e, handle, table)}
-                          className="absolute w-3 h-3 bg-white border border-brand-600 rounded-full z-20"
-                          style={{
-                            top: handle.includes('n') ? -6 : handle.includes('s') ? undefined : '50%',
-                            bottom: handle.includes('s') ? -6 : undefined,
-                            left: handle.includes('w') ? -6 : handle.includes('e') ? undefined : '50%',
-                            right: handle.includes('e') ? -6 : undefined,
-                            marginTop: !handle.includes('n') && !handle.includes('s') ? -6 : undefined,
-                            marginLeft: !handle.includes('w') && !handle.includes('e') ? -6 : undefined,
-                            cursor: `${handle}-resize`
-                          }}
-                        />
-                      ))}
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const acceptOrder = (orderId: string) => {
-    setIncomingOrders(prev => prev.map(order => 
-      order.id === orderId 
-        ? { ...order, status: 'PREPARING' } 
-        : order
-    ));
-    
-    if (currentOrder?.id === orderId) {
-      setCurrentOrder(prev => prev ? { ...prev, status: 'PREPARING' } : null);
-    }
-
-    // In a real app, this would trigger a kitchen print
-    toast(t('order_sent_to_kitchen'));
-  };
-
-  const rejectOrder = (orderId: string) => {
-    if (window.confirm(t('confirm_reject_order'))) {
-      setIncomingOrders(prev => prev.map(order => 
-        order.id === orderId 
-          ? { ...order, status: 'CANCELLED' } 
-          : order
-      ));
-      
-      if (currentOrder?.id === orderId) {
-        setCurrentOrder(prev => prev ? { ...prev, status: 'CANCELLED' } : null);
-        setActiveView('ORDER_LIST');
-      }
-    }
-  };
-
-  const renderOrderList = () => {
-    const sources: OrderSource[] = ['WEBSITE', 'APP', 'TALABAT', 'HUNGERSTATION', 'JAHEZ', 'SUPPORT'];
-    
-    const filteredOrders = incomingOrders.filter(order => {
-      const matchesSource = orderFilter === 'ALL' ? true : order.source === orderFilter;
-      let matchesStatus = true;
-      
-      switch (orderStatusFilter) {
-        case 'ALL':
-          matchesStatus = true;
-          break;
-        case 'PENDING':
-          matchesStatus = order.status === 'PENDING';
-          break;
-        case 'CANCELLED':
-          matchesStatus = order.status === 'CANCELLED';
-          break;
-        case 'HISTORY':
-          matchesStatus = order.status !== 'PENDING' && order.status !== 'CANCELLED';
-          break;
-      }
-      
-      return matchesSource && matchesStatus;
-    });
-    
-    // Sort: Pending first, then by date
-    const sortedOrders = [...filteredOrders].sort((a, b) => {
-      if (a.status === 'PENDING' && b.status !== 'PENDING') return -1;
-      if (a.status !== 'PENDING' && b.status === 'PENDING') return 1;
-      return b.createdAt.getTime() - a.createdAt.getTime();
-    });
-
-    const getSourceIcon = (source: OrderSource) => {
-      switch (source) {
-        case 'WEBSITE': return <Globe className="w-4 h-4" />;
-        case 'APP': return <Smartphone className="w-4 h-4" />;
-        case 'SUPPORT': return <Phone className="w-4 h-4" />;
-        default: return <ShoppingBag className="w-4 h-4" />;
-      }
-    };
-
-    const getSourceColor = (source: OrderSource) => {
-      switch (source) {
-        case 'WEBSITE': return 'bg-info/15 text-info';
-        case 'APP': return 'bg-brand-100 text-brand-700';
-        case 'TALABAT': return 'bg-warning/15 text-warning';
-        case 'HUNGERSTATION': return 'bg-secondary-100 text-secondary-700';
-        case 'SUPPORT': return 'bg-brand-50 text-brand-600';
-        default: return 'bg-gray-100 text-gray-700';
-      }
-    };
-
-    const statusTone = (s: OrderStatus): React.ComponentProps<typeof Badge>['tone'] =>
-      s === 'PENDING' ? 'gold' : s === 'CANCELLED' ? 'maroon' : 'success';
-
-    return (
-      <div className="flex-1 bg-parchment bg-pageBg p-8 overflow-auto">
-        <div className="flex flex-col gap-6 mb-8">
-          <div className="flex justify-between items-center flex-wrap gap-4">
-            <SectionHeader title={t('incoming_orders')} align="start" />
-
-            {/* Status Toggle */}
-            <div className="flex gap-2 flex-wrap">
-              <Pill active={orderStatusFilter === 'ALL'} onClick={() => setOrderStatusFilter('ALL')}>{t('ord_status_all')}</Pill>
-              <Pill active={orderStatusFilter === 'PENDING'} onClick={() => setOrderStatusFilter('PENDING')}>{t('ord_status_pending')}</Pill>
-              <Pill active={orderStatusFilter === 'CANCELLED'} onClick={() => setOrderStatusFilter('CANCELLED')}>{t('ord_status_canceled')}</Pill>
-              <Pill active={orderStatusFilter === 'HISTORY'} onClick={() => setOrderStatusFilter('HISTORY')}>{t('ord_status_history')}</Pill>
-            </div>
-          </div>
-
-          {/* Source Filters */}
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            <Pill active={orderFilter === 'ALL'} onClick={() => setOrderFilter('ALL')}>{t('all')}</Pill>
-            {sources.map(source => (
-              <Pill key={source} active={orderFilter === source} onClick={() => setOrderFilter(source)}>
-                <span className="inline-flex items-center gap-2">{getSourceIcon(source)}{sourceLabel(source)}</span>
-              </Pill>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {sortedOrders.map((order, i) => (
-            <motion.div
-              key={order.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i * 0.04, 0.4) }}
-            >
-              <Card
-                interactive
-                onClick={() => editOrder(order)}
-                className={`p-6 ${order.status === 'CANCELLED' ? 'opacity-50' : ''}`}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2.5 rounded-2xl ${getSourceColor(order.source)}`}>
-                      {getSourceIcon(order.source)}
-                    </div>
-                    <div>
-                      <div className="font-bold text-ink">#{order.id}</div>
-                      <div className="text-xs text-gray-500">{order.createdAt.toLocaleTimeString()}</div>
-                    </div>
-                  </div>
-                  <Badge tone={statusTone(order.status)}>{statusLabel(order.status)}</Badge>
-                </div>
-
-                <div className="mb-4 space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <User className="w-4 h-4 text-brand-400" />
-                    {order.customerName || t('guest')}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <MapPin className="w-4 h-4 text-brand-400" />
-                    {typeLabel(order.type)}
-                  </div>
-                </div>
-
-                <div className="border-t border-b border-gray-100 py-3 mb-4 space-y-2">
-                  {order.items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-sm">
-                      <span className="text-gray-600">{item.quantity}x {item.product.name}</span>
-                      <span className="font-bold text-ink">{item.product.price * item.quantity}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex justify-between items-center mb-4">
-                  <span className="font-bold text-gray-500">{t('total')}</span>
-                  <PriceTag amount={order.total} currency={t('sar')} className="text-xl" />
-                </div>
-
-                {order.status === 'PENDING' && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button variant="outline" size="sm" block onClick={(e) => { e.stopPropagation(); rejectOrder(order.id); }}>
-                      {t('reject')}
-                    </Button>
-                    <Button variant="primary" size="sm" block onClick={(e) => { e.stopPropagation(); acceptOrder(order.id); }}>
-                      {t('accept')}
-                    </Button>
-                  </div>
-                )}
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const renderHeldOrders = () => {
-    const orderTypes: OrderType[] = ['DINE_IN', 'TAKEAWAY', 'DELIVERY', 'PICKUP'];
-    
-    const filteredHeldOrders = heldOrders.filter(order => 
-      heldOrderFilter === 'ALL' ? true : order.type === heldOrderFilter
-    );
-
-    return (
-    <div className="flex-1 bg-parchment bg-pageBg p-8 overflow-auto">
-      <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
-        <SectionHeader title={t('held_orders')} align="start" />
-        <div className="flex gap-2 flex-wrap">
-          <Pill active={heldOrderFilter === 'ALL'} onClick={() => setHeldOrderFilter('ALL')}>{t('all')}</Pill>
-          {orderTypes.map(type => (
-            <Pill key={type} active={heldOrderFilter === type} onClick={() => setHeldOrderFilter(type)}>
-              {typeLabel(type)}
-            </Pill>
-          ))}
-        </div>
-      </div>
-
-      {filteredHeldOrders.length === 0 ? (
-        <EmptyState icon={PauseCircle} title={t('no_held_orders')} />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredHeldOrders.map((order, i) => (
-            <motion.div
-              key={order.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i * 0.04, 0.4) }}
-            >
-              <Card interactive className="p-6 border-s-4 border-s-secondary-500" onClick={() => resumeOrder(order)}>
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <div className="font-display font-bold text-ink text-lg">
-                      {order.type === 'DINE_IN' ? `${t('table_single')} ${order.tableName}` : typeLabel(order.type)}
-                    </div>
-                    <div className="text-xs text-gray-500">#{order.id}</div>
-                  </div>
-                  <div className="text-xs text-gray-400 font-mono">
-                    {order.createdAt.toLocaleTimeString()}
-                  </div>
-                </div>
-
-                <div className="text-sm text-gray-600 mb-4 line-clamp-2">
-                  {order.items.map(i => `${i.quantity}x ${i.product.name}`).join(', ')}
-                </div>
-
-                <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-                  <PriceTag amount={order.total} currency={t('sar')} className="text-xl" />
-                  <span className="text-brand-700 font-bold text-sm flex items-center gap-1">
-                    {t('resume')} <ArrowLeft className="w-4 h-4 rotate-180" />
-                  </span>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
         </div>
       )}
-    </div>
-  );
-  };
 
-  return (
-    <div className="flex h-screen bg-pageBg font-sans text-ink" dir={language === 'ar' ? 'rtl' : 'ltr'}>
-      {renderSidebar()}
-      {activeView === 'TABLES' && renderTables()}
-      {activeView === 'TABLE_LAYOUT' && renderTableLayoutEditor()}
-      {activeView === 'ORDER_ENTRY' && renderOrderEntry()}
-      {activeView === 'ORDER_LIST' && renderOrderList()}
-      {activeView === 'HELD_ORDERS' && renderHeldOrders()}
-      {activeView === 'SETTINGS' && renderSettings()}
-
-      {/* Product Sheet */}
-      {selectedProduct && renderProductModal()}
-
-      {/* Customer Sheet */}
-      <Sheet open={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} className="max-w-md">
-        <div className="p-6">
-          <SectionHeader title={t('add_customer')} align="start" className="mb-5" />
-          <Field label={t('customer_name')} htmlFor="cust-name">
-            <Input
-              id="cust-name"
-              type="text"
-              value={tempCustomerName}
-              onChange={(e) => setTempCustomerName(e.target.value)}
-              placeholder={t('customer_name')}
-              autoFocus
-            />
-          </Field>
-          <div className="flex gap-3 mt-6">
-            <Button variant="ghost" block onClick={() => setIsCustomerModalOpen(false)}>{t('cancel')}</Button>
-            <Button variant="primary" block onClick={handleSaveCustomer}>{t('save')}</Button>
+      {/* ── discount modal ── */}
+      {discOpen && (
+        <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setDiscOpen(false)}>
+          <div className="bg-white w-full max-w-sm rounded-3xl p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display font-bold text-lg text-gray-900">{ar ? 'خصم على الطلب' : 'Order discount'}</h2>
+              <button onClick={() => setDiscOpen(false)} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center text-gray-500"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {(['PCT', 'AMT'] as const).map(tp => (
+                <button key={tp} onClick={() => setDiscType(tp)} className={`py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${discType === tp ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-gray-200 text-gray-500'}`}>{tp === 'PCT' ? (ar ? 'نسبة %' : 'Percent %') : (ar ? `مبلغ ${sar}` : `Amount ${sar}`)}</button>
+              ))}
+            </div>
+            <input value={discValue} onChange={e => setDiscValue(e.target.value.replace(/[^0-9.]/g, ''))} inputMode="decimal" autoFocus placeholder={discType === 'PCT' ? '10' : '20'} dir="ltr" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 font-bold text-lg text-gray-900 outline-none focus:ring-2 focus:ring-brand-500 text-end mb-4" />
+            <button onClick={applyDiscount} className="w-full py-3.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold transition-colors">{ar ? 'تطبيق الخصم' : 'Apply discount'}</button>
           </div>
         </div>
-      </Sheet>
+      )}
 
-      {/* Order Note Sheet */}
-      <Sheet open={isOrderNoteModalOpen} onClose={() => setIsOrderNoteModalOpen(false)} className="max-w-md">
-        <div className="p-6">
-          <SectionHeader title={t('add_note')} align="start" className="mb-5" />
-          <Field label={t('order_note')} htmlFor="ord-note">
-            <Textarea
-              id="ord-note"
-              value={tempOrderNote}
-              onChange={(e) => setTempOrderNote(e.target.value)}
-              placeholder={t('order_note')}
-              rows={4}
-              autoFocus
-            />
-          </Field>
-          <div className="flex gap-3 mt-6">
-            <Button variant="ghost" block onClick={() => setIsOrderNoteModalOpen(false)}>{t('cancel')}</Button>
-            <Button variant="primary" block onClick={handleSaveOrderNote}>{t('save')}</Button>
+      {/* ── customer modal ── */}
+      {infoModal === 'customer' && (
+        <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setInfoModal(null)}>
+          <div className="bg-white w-full max-w-sm rounded-3xl p-5 max-h-[88vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display font-bold text-lg text-gray-900 flex items-center gap-2"><UserPlus className="w-5 h-5 text-brand-600" />{ar ? 'بيانات العميل' : 'Customer'}</h2>
+              <button onClick={() => setInfoModal(null)} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center text-gray-500 hover:bg-gray-200"><X className="w-5 h-5" /></button>
+            </div>
+
+            {/* live avatar */}
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-brand-50 text-brand-700 grid place-items-center font-display font-bold text-2xl">
+                {inits(cart.customer) || <User className="w-7 h-7 text-brand-300" />}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="relative">
+                <User className="w-4 h-4 text-gray-400 absolute top-3.5 start-3" />
+                <input value={cart.customer ?? ''} onChange={e => patchCart(c => ({ ...c, customer: e.target.value }))} autoFocus placeholder={ar ? 'اسم العميل' : 'Customer name'} className="w-full h-11 bg-gray-50 border border-gray-200 rounded-xl ps-9 pe-3 text-sm font-semibold text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-500" />
+              </div>
+              <div className="flex gap-2" dir="ltr">
+                <span className="h-11 px-3 grid place-items-center rounded-xl bg-gray-100 text-sm font-bold text-gray-500 shrink-0">🇸🇦 +966</span>
+                <div className="relative flex-1">
+                  <Phone className="w-4 h-4 text-gray-400 absolute top-3.5 start-3" />
+                  <input value={cart.phone ?? ''} onChange={e => patchCart(c => ({ ...c, phone: e.target.value.replace(/[^0-9]/g, '') }))} inputMode="tel" placeholder="5x xxx xxxx" className="w-full h-11 bg-gray-50 border border-gray-200 rounded-xl ps-9 pe-3 text-sm font-semibold text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-500" />
+                </div>
+              </div>
+            </div>
+
+            {/* recent customers */}
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />{ar ? 'عملاء متكررون' : 'Recent customers'}</p>
+              <div className="space-y-1.5">
+                {recentCustomers.map(rc => (
+                  <button key={rc.phone} onClick={() => patchCart(c => ({ ...c, customer: rc.name, phone: rc.phone }))} className="w-full flex items-center gap-3 p-2 rounded-xl border border-gray-100 hover:bg-gray-50 text-start transition-colors">
+                    <span className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 grid place-items-center font-bold text-xs shrink-0">{inits(rc.name)}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{rc.name}</p>
+                      <p className="text-xs text-gray-400" dir="ltr">{rc.phone}</p>
+                    </div>
+                    <ChevronLeft className={`w-4 h-4 text-gray-300 shrink-0 ${!ar ? 'rotate-180' : ''}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-5">
+              <button onClick={() => patchCart(c => ({ ...c, customer: undefined, phone: undefined }))} className="px-4 py-3 rounded-2xl bg-gray-100 text-gray-600 font-semibold text-sm hover:bg-gray-200 transition-colors">{ar ? 'مسح' : 'Clear'}</button>
+              <button onClick={() => setInfoModal(null)} className="flex-1 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold transition-colors">{ar ? 'حفظ' : 'Save'}</button>
+            </div>
           </div>
         </div>
-      </Sheet>
+      )}
+
+      {/* ── table picker ── */}
+      {infoModal === 'table' && (
+        <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setInfoModal(null)}>
+          <div className="bg-white w-full max-w-md rounded-3xl p-5 max-h-[88vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4 shrink-0">
+              <h2 className="font-display font-bold text-lg text-gray-900 flex items-center gap-2"><Hash className="w-5 h-5 text-brand-600" />{ar ? 'اختر الطاولة' : 'Select table'}</h2>
+              <button onClick={() => setInfoModal(null)} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center text-gray-500 hover:bg-gray-200"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto -mx-1 px-1 space-y-4">
+              {tableAreas.map(area => (
+                <div key={area.name}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-1.5 h-4 rounded-full bg-secondary-500" />
+                    <h3 className="text-sm font-bold text-gray-700">{area.name}</h3>
+                    <span className="text-xs text-gray-400">{area.tables.length} {ar ? 'طاولات' : 'tables'}</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2" dir="ltr">
+                    {area.tables.map(t => {
+                      const on = cart.table === t.n;
+                      return (
+                        <button key={t.n} onClick={() => patchCart(c => ({ ...c, table: on ? undefined : t.n }))} className={`aspect-square rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 transition-colors ${on ? 'border-brand-600 bg-brand-50' : 'border-gray-200 hover:border-gray-300 bg-white'}`}>
+                          <span className={`text-xl font-bold ${on ? 'text-brand-700' : 'text-gray-800'}`}>{t.n}</span>
+                          <span className={`text-[10px] flex items-center gap-0.5 ${on ? 'text-brand-500' : 'text-gray-400'}`}><Users className="w-3 h-3" />{t.s}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-5 shrink-0">
+              <button onClick={() => patchCart(c => ({ ...c, table: undefined }))} className="px-4 py-3 rounded-2xl bg-gray-100 text-gray-600 font-semibold text-sm hover:bg-gray-200 transition-colors">{ar ? 'مسح' : 'Clear'}</button>
+              <button onClick={() => setInfoModal(null)} className="flex-1 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold transition-colors">{ar ? 'تم' : 'Done'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── shift manager (fixed, two columns) ── */}
+      {shiftModal && (
+        <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShiftModal(false)}>
+          <div className="bg-white w-full max-w-2xl rounded-3xl h-[88vh] sm:h-[540px] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+              <h2 className="font-display font-bold text-lg text-gray-900 flex items-center gap-2"><Clock className="w-5 h-5 text-brand-600" />{ar ? 'الوردية' : 'Shift'}</h2>
+              <button onClick={() => setShiftModal(false)} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center text-gray-500 hover:bg-gray-200"><X className="w-5 h-5" /></button>
+            </div>
+
+            {!shift ? (
+              <div className="flex-1 grid sm:grid-cols-2 overflow-hidden">
+                <div className="p-6 flex flex-col items-center justify-center text-center border-e border-gray-100 bg-gray-50/60">
+                  <div className="w-16 h-16 rounded-2xl bg-brand-50 text-brand-600 grid place-items-center mb-4"><Clock className="w-8 h-8" /></div>
+                  <h3 className="font-display font-bold text-lg text-gray-900 mb-1">{ar ? 'بدء وردية جديدة' : 'Start a new shift'}</h3>
+                  <p className="text-sm text-gray-500">{ar ? 'أدخل النقد الافتتاحي الموجود في الدرج لبدء تسجيل المبيعات.' : 'Enter the opening cash in the drawer to begin recording sales.'}</p>
+                </div>
+                <div className="p-6 flex flex-col justify-center overflow-y-auto">
+                  <label className="text-xs font-semibold text-gray-400 mb-1 block">{ar ? 'النقد الافتتاحي' : 'Opening float'}</label>
+                  <div className="relative">
+                    <input value={openFloat} onChange={e => setOpenFloat(e.target.value.replace(/[^0-9.]/g, ''))} inputMode="decimal" autoFocus placeholder="0.00" dir="ltr" className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 font-bold text-lg text-gray-900 outline-none focus:ring-2 focus:ring-brand-500 text-end" />
+                    <span className="absolute top-3.5 start-4 text-sm font-semibold text-gray-400">{sar}</span>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    {['0', '200', '500', '1000'].map(v => <button key={v} onClick={() => setOpenFloat(v)} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm font-semibold text-gray-600 hover:bg-gray-200 transition-colors" dir="ltr">{v}</button>)}
+                  </div>
+                  <button onClick={startShift} className="w-full mt-5 py-3.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold transition-colors">{ar ? 'بدء الوردية' : 'Start shift'}</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 grid sm:grid-cols-2 overflow-hidden">
+                <div className="p-5 flex flex-col border-e border-gray-100 overflow-y-auto">
+                  <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
+                    <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                    <span className="text-sm font-semibold text-green-700">{ar ? 'مفتوحة منذ' : 'Open since'} {new Date(shift.start).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="text-xs text-green-600/70 ms-auto">{shift.cashier}</span>
+                  </div>
+                  <div className="bg-brand-50 rounded-2xl p-5 text-center mt-3">
+                    <span className="text-xs text-brand-600/80">{ar ? 'النقد المتوقع بالدرج' : 'Expected cash in drawer'}</span>
+                    <div className="font-display font-bold text-3xl text-brand-700 mt-1">{expectedCash.toFixed(2)} <span className="text-base text-brand-400">{sar}</span></div>
+                  </div>
+                  <button onClick={endShift} className="w-full mt-auto py-3.5 rounded-2xl bg-red-50 text-red-600 font-bold hover:bg-red-100 transition-colors">{ar ? 'إنهاء الوردية' : 'Close shift'}</button>
+                </div>
+                <div className="p-5 overflow-y-auto">
+                  <p className="text-xs font-semibold text-gray-400 mb-2">{ar ? 'ملخص الوردية' : 'Shift summary'}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { l: ar ? 'عدد الطلبات' : 'Orders', v: String(shift.count) },
+                      { l: ar ? 'إجمالي المبيعات' : 'Total sales', v: shiftTotal.toFixed(2) },
+                      { l: ar ? 'نقدي' : 'Cash', v: shift.cash.toFixed(2) },
+                      { l: 'مدى', v: shift.mada.toFixed(2) },
+                      { l: ar ? 'تحويل' : 'Transfer', v: shift.transfer.toFixed(2) },
+                      { l: ar ? 'النقد الافتتاحي' : 'Float', v: shift.float.toFixed(2) },
+                    ].map(s => (
+                      <div key={s.l} className="bg-gray-50 rounded-xl p-3">
+                        <p className="text-xs text-gray-400 mb-0.5">{s.l}</p>
+                        <p className="font-display font-bold text-gray-900">{s.v}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── cash drawer (fixed, two columns) ── */}
+      {drawerModal && (
+        <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setDrawerModal(false); setDrawerAction(null); }}>
+          <div className="bg-white w-full max-w-2xl rounded-3xl h-[88vh] sm:h-[540px] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+              <h2 className="font-display font-bold text-lg text-gray-900 flex items-center gap-2"><Wallet className="w-5 h-5 text-brand-600" />{ar ? 'درج النقود' : 'Cash drawer'}</h2>
+              <button onClick={() => { setDrawerModal(false); setDrawerAction(null); }} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center text-gray-500 hover:bg-gray-200"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="flex-1 grid sm:grid-cols-2 overflow-hidden">
+              {/* left: balance + actions */}
+              <div className="p-5 flex flex-col border-e border-gray-100 overflow-y-auto">
+                <div className="text-center bg-gray-50 rounded-2xl py-4 px-3">
+                  <span className="text-xs text-gray-400">{ar ? 'النقد المتوقع في الدرج' : 'Expected cash in drawer'}</span>
+                  <div className="font-display font-bold text-3xl text-gray-900 mt-1">{expectedCash.toFixed(2)} <span className="text-base text-gray-400">{sar}</span></div>
+                  <div className="flex justify-center flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-400 mt-2">
+                    <span>{ar ? 'افتتاحي' : 'Float'}: {(shift?.float ?? 0).toFixed(0)}</span>
+                    <span>{ar ? 'مبيعات نقدية' : 'Cash sales'}: {(shift?.cash ?? 0).toFixed(0)}</span>
+                    <span>{ar ? 'إيداع' : 'In'}: {drawerIn.toFixed(0)}</span>
+                    <span>{ar ? 'سحب' : 'Out'}: {drawerOut.toFixed(0)}</span>
+                  </div>
+                </div>
+
+                {drawerAction ? (
+                  <div className="bg-gray-50 rounded-2xl p-3 mt-4">
+                    <p className="font-semibold text-sm text-gray-800 mb-2">{drawerAction === 'IN' ? (ar ? 'إيداع نقدي' : 'Cash in') : (ar ? 'سحب نقدي' : 'Cash out')}</p>
+                    <input value={moveAmount} onChange={e => setMoveAmount(e.target.value.replace(/[^0-9.]/g, ''))} inputMode="decimal" autoFocus placeholder={ar ? 'المبلغ' : 'Amount'} dir="ltr" className="w-full h-11 bg-white border border-gray-200 rounded-xl px-3 font-bold text-gray-900 outline-none focus:ring-2 focus:ring-brand-500 text-end mb-2" />
+                    <input value={moveReason} onChange={e => setMoveReason(e.target.value)} placeholder={ar ? 'السبب (اختياري)' : 'Reason (optional)'} className="w-full h-11 bg-white border border-gray-200 rounded-xl px-3 text-sm font-semibold text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-500 mb-3" />
+                    <div className="flex gap-2">
+                      <button onClick={() => setDrawerAction(null)} className="px-4 py-2.5 rounded-xl bg-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-300 transition-colors">{ar ? 'إلغاء' : 'Cancel'}</button>
+                      <button onClick={addMove} className="flex-1 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold transition-colors">{ar ? 'تأكيد' : 'Confirm'}</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2 mt-4">
+                    <button onClick={() => setDrawerAction('IN')} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl border-2 border-gray-200 text-gray-600 hover:border-green-300 hover:text-green-600 transition-colors"><ArrowDownLeft className="w-5 h-5" /><span className="text-xs font-semibold">{ar ? 'إيداع' : 'Cash in'}</span></button>
+                    <button onClick={() => setDrawerAction('OUT')} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl border-2 border-gray-200 text-gray-600 hover:border-red-300 hover:text-red-600 transition-colors"><ArrowUpRight className="w-5 h-5" /><span className="text-xs font-semibold">{ar ? 'سحب' : 'Cash out'}</span></button>
+                    <button onClick={openDrawer} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl border-2 border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600 transition-colors"><Wallet className="w-5 h-5" /><span className="text-xs font-semibold">{ar ? 'فتح الدرج' : 'Open'}</span></button>
+                  </div>
+                )}
+              </div>
+
+              {/* right: movements */}
+              <div className="p-5 overflow-y-auto">
+                <p className="text-xs font-semibold text-gray-400 mb-2">{ar ? 'الحركات' : 'Movements'}</p>
+                {moves.length === 0 ? (
+                  <div className="h-full min-h-[160px] flex flex-col items-center justify-center text-center text-gray-400">
+                    <Wallet className="w-10 h-10 mb-2 opacity-30" />
+                    <p className="text-sm">{ar ? 'لا توجد حركات بعد' : 'No movements yet'}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {moves.map(m => (
+                      <div key={m.id} className="flex items-center gap-3 bg-gray-50 rounded-xl p-2.5">
+                        <span className={`w-8 h-8 rounded-full grid place-items-center shrink-0 ${m.type === 'IN' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>{m.type === 'IN' ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">{m.reason}</p>
+                          <p className="text-[11px] text-gray-400" dir="ltr">{new Date(m.time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                        <span className={`font-display font-bold text-sm shrink-0 ${m.type === 'IN' ? 'text-green-600' : 'text-red-600'}`} dir="ltr">{m.type === 'IN' ? '+' : '−'}{m.amount.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── payment modal (fixed size) ── */}
+      {pay && (
+        <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setPay(false)}>
+          <div className="bg-white w-full max-w-md rounded-3xl h-[88vh] sm:h-[520px] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between shrink-0">
+              <h2 className="font-display font-bold text-xl text-gray-900">{ar ? 'الدفع' : 'Payment'}</h2>
+              <button onClick={() => setPay(false)} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center text-gray-500 hover:bg-gray-200"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              <div className="text-center mb-5">
+                <span className="text-sm text-gray-400">{ar ? 'الإجمالي المستحق' : 'Amount due'}</span>
+                <div className="font-display font-bold text-4xl text-brand-700 mt-1">{net.toFixed(2)} <span className="text-lg text-gray-400">{sar}</span></div>
+              </div>
+              <div className="grid grid-cols-3 gap-2 mb-5">
+                {([{ id: 'CASH', label: ar ? 'نقدي' : 'Cash', Icon: Banknote }, { id: 'MADA', label: 'مدى', Icon: CreditCard }, { id: 'TRANSFER', label: ar ? 'تحويل' : 'Transfer', Icon: Smartphone }] as { id: PayMethod; label: string; Icon: React.ComponentType<{ className?: string }> }[]).map(m => {
+                  const on = method === m.id;
+                  return <button key={m.id} onClick={() => setMethod(m.id)} className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl border-2 text-sm font-semibold transition-colors ${on ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}><m.Icon className="w-6 h-6" />{m.label}</button>;
+                })}
+              </div>
+              {method === 'CASH' && (
+                <div>
+                  <label className="text-xs font-semibold text-gray-400">{ar ? 'المبلغ المدفوع' : 'Amount tendered'}</label>
+                  <input value={tendered} onChange={e => setTendered(e.target.value.replace(/[^0-9.]/g, ''))} inputMode="decimal" placeholder={net.toFixed(2)} dir="ltr" className="w-full mt-1 h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 font-bold text-lg text-gray-900 outline-none focus:ring-2 focus:ring-brand-500 text-end" />
+                  <div className="flex gap-2 mt-3">
+                    {cashChips.map(v => <button key={v} onClick={() => setTendered(v.toFixed(2))} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm font-semibold text-gray-600 hover:bg-gray-200 transition-colors" dir="ltr">{v.toFixed(0)}</button>)}
+                  </div>
+                  {tendered && Number(tendered) >= net && <div className="mt-3 flex justify-between text-sm font-semibold text-green-600 bg-green-50 rounded-xl px-4 py-2.5"><span>{ar ? 'الباقي' : 'Change'}</span><span dir="ltr">{(Number(tendered) - net).toFixed(2)} {sar}</span></div>}
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-100 shrink-0">
+              <button onClick={confirmPay} className="w-full py-4 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-lg shadow-lg shadow-brand-600/25 flex items-center justify-center gap-2 transition-colors"><Check className="w-6 h-6" strokeWidth={2.5} />{ar ? 'تأكيد الدفع والطباعة' : 'Confirm & print'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── receipt (ZATCA) ── */}
+      {sale && (
+        <div className="fixed inset-0 z-[60] bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSale(null)}>
+          <div className="w-full max-w-sm flex flex-col items-center gap-3" onClick={e => e.stopPropagation()}>
+            <div className="pos-receipt bg-white w-full rounded-2xl p-5 max-h-[80vh] overflow-y-auto text-ink" dir="rtl">
+              <div className="text-center">
+                <img src="logo-mark.png" alt="" className="w-12 h-12 mx-auto mb-1" />
+                <h3 className="font-display font-bold text-lg text-brand-800">مطبخ المضياف العربي</h3>
+                <p className="text-xs text-gray-500">فاتورة ضريبية مبسّطة</p>
+                <p className="text-[11px] text-gray-400 mt-1">الرقم الضريبي: {VAT_NO}</p>
+              </div>
+              <div className="my-3 border-t border-dashed border-gray-300" />
+              <div className="text-xs text-gray-500 space-y-1">
+                <div className="flex justify-between"><span>رقم الفاتورة</span><span className="font-semibold text-gray-700" dir="ltr">{sale.no}</span></div>
+                <div className="flex justify-between"><span>التاريخ</span><span className="font-semibold text-gray-700" dir="ltr">{new Date(sale.time).toLocaleString('en-GB', { hour12: false }).replace(',', '')}</span></div>
+                {sale.customer && <div className="flex justify-between"><span>العميل</span><span className="font-semibold text-gray-700">{sale.customer}</span></div>}
+                {sale.phone && <div className="flex justify-between"><span>الجوال</span><span className="font-semibold text-gray-700" dir="ltr">{sale.phone}</span></div>}
+                {sale.table && <div className="flex justify-between"><span>الطاولة</span><span className="font-semibold text-gray-700">{sale.table}</span></div>}
+                <div className="flex justify-between"><span>نوع الطلب</span><span className="font-semibold text-gray-700">{orderTypes.find(o => o.id === sale.orderType)?.label}</span></div>
+              </div>
+              <div className="my-3 border-t border-dashed border-gray-300" />
+              <div className="space-y-1.5">
+                {sale.lines.map(l => (
+                  <div key={l.uid} className="flex justify-between text-sm">
+                    <div className="min-w-0"><span className="font-semibold text-gray-800">{l.qty}× {l.product.name}</span>{l.modText && <span className="block text-[11px] text-gray-400 truncate">{l.modText}</span>}</div>
+                    <span className="font-semibold text-gray-800 shrink-0 ps-2">{(l.unitPrice * l.qty).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="my-3 border-t border-dashed border-gray-300" />
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between text-gray-500"><span>المجموع</span><span>{sale.gross.toFixed(2)}</span></div>
+                {sale.discountAmount > 0 && <div className="flex justify-between text-green-600"><span>الخصم</span><span dir="ltr">- {sale.discountAmount.toFixed(2)}</span></div>}
+                <div className="flex justify-between text-gray-500"><span>شامل ض.ق.م (15%)</span><span>{sale.vat.toFixed(2)}</span></div>
+                <div className="flex justify-between font-display font-bold text-base text-brand-800 pt-1"><span>الإجمالي</span><span>{sale.net.toFixed(2)} ر.س</span></div>
+                <div className="flex justify-between text-gray-500 pt-1"><span>طريقة الدفع</span><span className="font-semibold">{sale.method === 'CASH' ? 'نقدي' : sale.method === 'MADA' ? 'مدى' : 'تحويل'}</span></div>
+                {sale.tendered !== undefined && <><div className="flex justify-between text-gray-500"><span>المدفوع</span><span dir="ltr">{sale.tendered.toFixed(2)}</span></div><div className="flex justify-between text-gray-500"><span>الباقي</span><span dir="ltr">{(sale.change ?? 0).toFixed(2)}</span></div></>}
+              </div>
+              <div className="mt-4 flex flex-col items-center">
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=130x130&margin=0&data=${encodeURIComponent(sale.qr)}`} alt="ZATCA QR" className="w-28 h-28" />
+                <p className="text-[10px] text-gray-400 mt-1">رمز الاستجابة السريع — هيئة الزكاة والضريبة</p>
+              </div>
+              <p className="text-center text-xs text-gray-400 mt-3">شكراً لزيارتكم 🌟</p>
+            </div>
+            {/* actions (hidden when printing) */}
+            <div className="no-print flex gap-2 w-full">
+              <button onClick={() => window.print()} className="flex-1 py-3 rounded-2xl bg-white text-gray-700 font-semibold flex items-center justify-center gap-2 hover:bg-gray-50"><Printer className="w-5 h-5" />{ar ? 'طباعة' : 'Print'}</button>
+              <button onClick={() => setSale(null)} className="flex-1 py-3 rounded-2xl bg-brand-600 text-white font-bold flex items-center justify-center gap-2 hover:bg-brand-700"><Check className="w-5 h-5" />{ar ? 'طلب جديد' : 'New order'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

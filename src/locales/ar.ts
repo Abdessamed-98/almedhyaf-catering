@@ -4,12 +4,6 @@ export const ar: Record<string, string> = {
     portal_title: 'بوابة الأنظمة الموحدة',
     portal_subtitle: 'اختر النظام المراد الدخول إليه',
     portal_rights: 'شركة المضياف العربي المحدودة. جميع الحقوق محفوظة.',
-    app_pos: 'نظام نقاط البيع',
-    app_pos_sub: 'POS System',
-    app_mini_pos: 'نقاط بيع مصغر',
-    app_mini_pos_sub: 'Mini POS',
-    app_delivery: 'تطبيق التوصيل',
-    app_delivery_sub: 'Delivery App',
     app_client: 'تطبيق العملاء',
     app_client_sub: 'Client App',
     app_landing: 'الموقع التعريفي',
@@ -419,7 +413,7 @@ export const ar: Record<string, string> = {
     del_nav_active: 'الطلب الحالي',
     del_nav_new: 'طلبات جديدة',
 
-    // POS / MiniPOS shared labels (status enums, fallbacks)
+    // Order status & source labels (used by the ordering app)
     ord_status_confirmed: 'تم التأكيد',
     status_available: 'متاحة',
     status_occupied: 'مشغولة',

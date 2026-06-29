@@ -1,4 +1,4 @@
-export type ViewState = 'PORTAL' | 'WEBSITE' | 'ORDERING' | 'MINI_POS' | 'POS' | 'DELIVERY_APP';
+export type ViewState = 'PORTAL' | 'WEBSITE' | 'ORDERING' | 'POS';
 
 export type WebsitePage =
   | 'HOME'
