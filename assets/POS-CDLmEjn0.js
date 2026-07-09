@@ -1,4 +1,4 @@
-import{c as f,u as Ns,a as vs,r as l,j as e,B as ws,C as $e}from"./index-H-3aqj0n.js";import{P as re,W as L,a as ks}from"./menu-VyxJv58k.js";import{C as Pe,a as H,X as k}from"./x-BEfVQpBb.js";import{S as Cs,T as Ss,M as Ie}from"./trash-2-Bc8_lYMp.js";import{U as De}from"./utensils-BJpeBrh1.js";import{S as Ee,P as ne}from"./shopping-bag-BQSKcNZx.js";import{T as Oe}from"./ticket-percent-sqdhBB6U.js";import{B as _e,U as qe,C as Ms,S as As}from"./user-64MBmWj5.js";import{P as Ts}from"./phone-DpNMeT3C.js";/**
+import{c as f,u as Ns,a as vs,r as l,j as e,B as ws,C as $e}from"./index-Cs3MJqCJ.js";import{P as re,W as L,a as ks}from"./menu-yP9EZhP5.js";import{C as Pe,a as H}from"./clock-Dv_7c0Ka.js";import{S as Cs,T as Ss,M as Ie}from"./trash-2-C6ylrNY3.js";import{U as De}from"./utensils-CxTZIy7k.js";import{S as Ee,P as ne,X as k}from"./x-BJmrsrqx.js";import{T as Oe}from"./ticket-percent-CgFZjNgf.js";import{B as _e,U as qe,C as Ms,S as As}from"./user-C7ay7ARp.js";import{P as Ts}from"./phone-BFXMu6B3.js";/**
  * @license lucide-react v0.574.0 - ISC
  *
  * This source code is licensed under the ISC license.
