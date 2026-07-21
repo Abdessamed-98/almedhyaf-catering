@@ -26,6 +26,7 @@ export interface Order {
   statusSince: number;  // when it entered the current status (for SLA aging)
   scheduledFor?: number; // set => scheduled order; absent => ASAP / "now"
   prepMin?: number;     // promised prep time set on accept
+  notifyBefore?: number; // scheduled orders: minutes before the slot to remind the kitchen
   rejectReason?: string;
   total: number;        // VAT-inclusive
 }

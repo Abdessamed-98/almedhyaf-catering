@@ -23,6 +23,7 @@ export interface DriverJob {
   offeredAt: number;   // when the offer arrived (for the accept countdown)
   acceptedAt?: number;
   deliveredAt?: number;
+  proofPhoto?: string; // handoff photo captured at delivery
 }
 
 // ── the logged-in driver (bilingual profile) ──
@@ -86,7 +87,7 @@ export const makeJob = (): DriverJob => {
 // a delivered job for the earnings history / seeded ledger
 const deliveredJob = (minsAgo: number): DriverJob => {
   const j = makeJob();
-  return { ...j, stage: 'DELIVERED', acceptedAt: Date.now() - (minsAgo + 25) * 60000, deliveredAt: Date.now() - minsAgo * 60000 };
+  return { ...j, stage: 'DELIVERED', acceptedAt: Date.now() - (minsAgo + 25) * 60000, deliveredAt: Date.now() - minsAgo * 60000, proofPhoto: 'concept/07.jpg' };
 };
 
 // ── seeds ──

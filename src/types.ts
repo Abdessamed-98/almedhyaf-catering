@@ -1,4 +1,4 @@
-export type ViewState = 'PORTAL' | 'WEBSITE' | 'ORDERING' | 'POS';
+export type ViewState = 'PORTAL' | 'WEBSITE' | 'ORDERING' | 'POS' | 'ORDERS' | 'DELIVERY';
 
 export type WebsitePage =
   | 'HOME'
@@ -9,7 +9,11 @@ export type WebsitePage =
   | 'NEWS'
   | 'CONTACT'
   | 'CAREERS'
-  | 'GALLERY';
+  | 'GALLERY'
+  | 'PROJECTS'
+  | 'BLOG'
+  | 'FAQ'
+  | 'PARTNERS';
 
 export interface MenuItem {
   id: number;
@@ -63,6 +67,7 @@ export interface Product {
   image: string;
   category: string;
   calories?: number;
+  popular?: boolean;
   modifiers?: ModifierGroup[];
 }
 

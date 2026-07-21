@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Button } from '../../ui';
 import { motion } from 'motion/react';
-import { Star, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, ShoppingBag, ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import { Kabsa, Grill, Mezze, Sweets, Drinks } from '../../components/icons';
 
 const fadeUp = {
@@ -79,7 +79,7 @@ const OffersCarousel: React.FC<{ onOrderNow?: () => void }> = ({ onOrderNow }) =
   );
 };
 
-interface Dish { n: string; en: string; d: string; de: string; img: string; star?: boolean }
+interface Dish { n: string; en: string; d: string; de: string; img: string; star?: boolean; cal: number }
 interface Category { key: string; label: string; labelEn: string; Icon: React.ComponentType<{ className?: string }>; dishes: Dish[] }
 
 /** Full banquet menu — tabbed categories with photo dish cards. */
@@ -87,58 +87,60 @@ const BanquetMenu: React.FC<{ onOrderNow?: () => void }> = ({ onOrderNow }) => {
   const { language } = useLanguage();
   const ar = language === 'ar';
   const [active, setActive] = useState(0);
+  const [sort, setSort] = useState<'popular' | 'cal_hi' | 'cal_lo'>('popular');
 
   const categories: Category[] = [
     {
       key: 'mains', label: 'الأطباق الرئيسية', labelEn: 'Signature Mains', Icon: Kabsa,
       dishes: [
-        { n: 'المندي', en: 'Mandi', d: 'لحم أو دجاج مدخّن في التنّور على أرز بسمتي معطّر بالبهارات.', de: 'Tandoor-smoked lamb or chicken over fragrant basmati rice.', img: 'dishes/main-4.jpg', star: true },
-        { n: 'الكبسة', en: 'Kabsa', d: 'أرز بالبهارات السعودية مع اللحم والمكسرات والزبيب.', de: 'Saudi-spiced rice with meat, nuts and raisins.', img: 'dishes/main-1.jpg', star: true },
-        { n: 'المفطّح', en: 'Mufattah', d: 'خروف كامل على أرز بخاري — طبق الولائم الكبرى.', de: 'Whole lamb over Bukhari rice — the grand-banquet centerpiece.', img: 'services/banquets.jpg', star: true },
-        { n: 'المظبي', en: 'Mathbi', d: 'دجاج مشوي على الحجر بنكهة الفحم الأصيلة.', de: 'Stone-grilled chicken with an authentic smoky char.', img: 'dishes/main-5.jpg' },
-        { n: 'البرياني', en: 'Biryani', d: 'أرز هندي بالبهارات الحارّة واللحم الطري.', de: 'Spiced Indian rice with tender meat.', img: 'dishes/main-2.jpg' },
-        { n: 'أرز بخاري', en: 'Bukhari Rice', d: 'أرز بالجزر والزبيب يُقدّم مع الدجاج.', de: 'Carrot-and-raisin rice served with chicken.', img: 'dishes/main-6.jpg' },
+        { n: 'المندي', en: 'Mandi', d: 'لحم أو دجاج مدخّن في التنّور على أرز بسمتي معطّر بالبهارات.', de: 'Tandoor-smoked lamb or chicken over fragrant basmati rice.', img: 'dishes/main-4.jpg', star: true, cal: 1250 },
+        { n: 'الكبسة', en: 'Kabsa', d: 'أرز بالبهارات السعودية مع اللحم والمكسرات والزبيب.', de: 'Saudi-spiced rice with meat, nuts and raisins.', img: 'dishes/main-1.jpg', star: true, cal: 1200 },
+        { n: 'المفطّح', en: 'Mufattah', d: 'خروف كامل على أرز بخاري — طبق الولائم الكبرى.', de: 'Whole lamb over Bukhari rice — the grand-banquet centerpiece.', img: 'services/banquets.jpg', star: true, cal: 1450 },
+        { n: 'المظبي', en: 'Mathbi', d: 'دجاج مشوي على الحجر بنكهة الفحم الأصيلة.', de: 'Stone-grilled chicken with an authentic smoky char.', img: 'dishes/main-5.jpg', cal: 1000 },
+        { n: 'البرياني', en: 'Biryani', d: 'أرز هندي بالبهارات الحارّة واللحم الطري.', de: 'Spiced Indian rice with tender meat.', img: 'dishes/main-2.jpg', cal: 980 },
+        { n: 'أرز بخاري', en: 'Bukhari Rice', d: 'أرز بالجزر والزبيب يُقدّم مع الدجاج.', de: 'Carrot-and-raisin rice served with chicken.', img: 'dishes/main-6.jpg', cal: 1100 },
       ],
     },
     {
       key: 'grill', label: 'المشويات', labelEn: 'From the Grill', Icon: Grill,
       dishes: [
-        { n: 'مشاوي مشكّلة', en: 'Mixed Grill', d: 'تشكيلة كباب وتكة وأوصال مشوية على الفحم.', de: 'Charcoal kebab, tikka and chops.', img: 'dishes/grill-2.jpg', star: true },
-        { n: 'شيش طاووق', en: 'Shish Tawook', d: 'قطع دجاج متبّلة مشوية على الأسياخ.', de: 'Marinated grilled chicken skewers.', img: 'dishes/grill-1.jpg' },
-        { n: 'كباب', en: 'Kebab', d: 'لحم مفروم متبّل بالبهارات والأعشاب.', de: 'Spiced minced-meat kebab.', img: 'dishes/grill-3.jpg' },
-        { n: 'أرياش', en: 'Lamb Chops', d: 'ريش خروف مشوية على الفحم.', de: 'Charcoal-grilled lamb ribs.', img: 'dishes/grill-4.jpg' },
+        { n: 'مشاوي مشكّلة', en: 'Mixed Grill', d: 'تشكيلة كباب وتكة وأوصال مشوية على الفحم.', de: 'Charcoal kebab, tikka and chops.', img: 'dishes/grill-2.jpg', star: true, cal: 900 },
+        { n: 'شيش طاووق', en: 'Shish Tawook', d: 'قطع دجاج متبّلة مشوية على الأسياخ.', de: 'Marinated grilled chicken skewers.', img: 'dishes/grill-1.jpg', cal: 650 },
+        { n: 'كباب', en: 'Kebab', d: 'لحم مفروم متبّل بالبهارات والأعشاب.', de: 'Spiced minced-meat kebab.', img: 'dishes/grill-3.jpg', cal: 720 },
+        { n: 'أرياش', en: 'Lamb Chops', d: 'ريش خروف مشوية على الفحم.', de: 'Charcoal-grilled lamb ribs.', img: 'dishes/grill-4.jpg', cal: 820 },
       ],
     },
     {
       key: 'mezze', label: 'المقبلات والسلطات', labelEn: 'Mezze & Salads', Icon: Mezze,
       dishes: [
-        { n: 'حمص ومتبّل', en: 'Hummus & Mutabbal', d: 'معجّنات الحمّص والباذنجان المدخّن.', de: 'Chickpea and smoky-eggplant dips.', img: 'dishes/mezze-1.jpg' },
-        { n: 'تبّولة وفتّوش', en: 'Tabbouleh & Fattoush', d: 'سلطات شامية طازجة بزيت الزيتون.', de: 'Fresh Levantine salads in olive oil.', img: 'dishes/mezze-2.jpg' },
-        { n: 'سمبوسك', en: 'Sambousek', d: 'معجّنات مقرمشة محشوة باللحم أو الخضار.', de: 'Crisp pastries with meat or vegetables.', img: 'dishes/samosa-1.jpg' },
-        { n: 'ورق عنب', en: 'Vine Leaves', d: 'محشي بالأرز والبهارات.', de: 'Rice-and-spice stuffed vine leaves.', img: 'dishes/dolma-1.jpg' },
+        { n: 'حمص ومتبّل', en: 'Hummus & Mutabbal', d: 'معجّنات الحمّص والباذنجان المدخّن.', de: 'Chickpea and smoky-eggplant dips.', img: 'dishes/mezze-1.jpg', cal: 250 },
+        { n: 'تبّولة وفتّوش', en: 'Tabbouleh & Fattoush', d: 'سلطات شامية طازجة بزيت الزيتون.', de: 'Fresh Levantine salads in olive oil.', img: 'dishes/mezze-2.jpg', cal: 180 },
+        { n: 'سمبوسك', en: 'Sambousek', d: 'معجّنات مقرمشة محشوة باللحم أو الخضار.', de: 'Crisp pastries with meat or vegetables.', img: 'dishes/samosa-1.jpg', cal: 320 },
+        { n: 'ورق عنب', en: 'Vine Leaves', d: 'محشي بالأرز والبهارات.', de: 'Rice-and-spice stuffed vine leaves.', img: 'dishes/dolma-1.jpg', cal: 220 },
       ],
     },
     {
       key: 'sweets', label: 'الحلويات', labelEn: 'Sweets', Icon: Sweets,
       dishes: [
-        { n: 'اللقيمات', en: 'Luqaimat', d: 'كرات مقرمشة بالعسل والسمسم.', de: 'Crisp dumplings in honey & sesame.', img: 'dishes/luqaimat-1.jpg', star: true },
-        { n: 'الكنافة', en: 'Kunafa', d: 'عجينة وجبن وقطر بماء الورد.', de: 'Cheese pastry in rose syrup.', img: 'dishes/kunafa-1.jpg' },
-        { n: 'أم علي', en: 'Umm Ali', d: 'حلى دافئ بالحليب والمكسرات.', de: 'Warm milk-and-nut pudding.', img: 'dishes/sweet-2.jpg' },
-        { n: 'بقلاوة', en: 'Baklava', d: 'طبقات رقيقة بالفستق والعسل.', de: 'Pistachio-and-honey layered pastry.', img: 'dishes/sweet-1.jpg' },
+        { n: 'اللقيمات', en: 'Luqaimat', d: 'كرات مقرمشة بالعسل والسمسم.', de: 'Crisp dumplings in honey & sesame.', img: 'dishes/luqaimat-1.jpg', star: true, cal: 450 },
+        { n: 'الكنافة', en: 'Kunafa', d: 'عجينة وجبن وقطر بماء الورد.', de: 'Cheese pastry in rose syrup.', img: 'dishes/kunafa-1.jpg', cal: 520 },
+        { n: 'أم علي', en: 'Umm Ali', d: 'حلى دافئ بالحليب والمكسرات.', de: 'Warm milk-and-nut pudding.', img: 'dishes/sweet-2.jpg', cal: 480 },
+        { n: 'بقلاوة', en: 'Baklava', d: 'طبقات رقيقة بالفستق والعسل.', de: 'Pistachio-and-honey layered pastry.', img: 'dishes/sweet-1.jpg', cal: 500 },
       ],
     },
     {
       key: 'drinks', label: 'المشروبات', labelEn: 'Beverages', Icon: Drinks,
       dishes: [
-        { n: 'القهوة العربية والتمر', en: 'Arabic Coffee & Dates', d: 'ضيافة أصيلة لاستقبال الضيوف.', de: 'The authentic welcome for your guests.', img: 'dishes/drink-1.jpg', star: true },
-        { n: 'الشاي بالنعناع', en: 'Mint Tea', d: 'شاي ساخن بالنعناع الطازج.', de: 'Hot tea with fresh mint.', img: 'dishes/tea-1.jpg' },
-        { n: 'عصائر طازجة', en: 'Fresh Juices', d: 'تشكيلة موسمية متنوّعة.', de: 'A varied, seasonal selection.', img: 'dishes/juice-1.jpg' },
-        { n: 'لبن وعيران', en: 'Laban & Ayran', d: 'مشروبات لبن منعشة.', de: 'Refreshing yogurt drinks.', img: 'dishes/laban-1.jpg' },
+        { n: 'القهوة العربية والتمر', en: 'Arabic Coffee & Dates', d: 'ضيافة أصيلة لاستقبال الضيوف.', de: 'The authentic welcome for your guests.', img: 'dishes/drink-1.jpg', star: true, cal: 90 },
+        { n: 'الشاي بالنعناع', en: 'Mint Tea', d: 'شاي ساخن بالنعناع الطازج.', de: 'Hot tea with fresh mint.', img: 'dishes/tea-1.jpg', cal: 25 },
+        { n: 'عصائر طازجة', en: 'Fresh Juices', d: 'تشكيلة موسمية متنوّعة.', de: 'A varied, seasonal selection.', img: 'dishes/juice-1.jpg', cal: 140 },
+        { n: 'لبن وعيران', en: 'Laban & Ayran', d: 'مشروبات لبن منعشة.', de: 'Refreshing yogurt drinks.', img: 'dishes/laban-1.jpg', cal: 110 },
       ],
     },
   ];
 
   const cat = categories[active];
+  const dishes = [...cat.dishes].sort((a, b) => sort === 'cal_hi' ? b.cal - a.cal : sort === 'cal_lo' ? a.cal - b.cal : (b.star ? 1 : 0) - (a.star ? 1 : 0));
 
   return (
     <section className="bg-parchment text-ink pt-5 pb-16 md:pt-7 md:pb-24" id="banquet-menu">
@@ -169,15 +171,22 @@ const BanquetMenu: React.FC<{ onOrderNow?: () => void }> = ({ onOrderNow }) => {
           ))}
         </div>
 
+        {/* sort */}
+        <div className="flex items-center justify-center gap-2 mb-8 -mt-3 flex-wrap">
+          {([['popular', ar ? 'الأكثر طلباً' : 'Most ordered'], ['cal_hi', ar ? 'الأعلى سعرات' : 'Highest cal'], ['cal_lo', ar ? 'الأقل سعرات' : 'Lowest cal']] as const).map(([k, label]) => (
+            <button key={k} onClick={() => setSort(k)} className={`px-4 py-2 rounded-full text-xs md:text-sm font-bold transition-colors ${sort === k ? 'bg-ink text-white' : 'bg-white text-gray-600 border border-[#eee1d0] hover:border-gray-300'}`}>{label}</button>
+          ))}
+        </div>
+
         {/* dishes */}
         <motion.div
-          key={cat.key}
+          key={cat.key + sort}
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
           className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
         >
-          {cat.dishes.map((dish, i) => (
+          {dishes.map((dish, i) => (
             <div
               key={i}
               className="group relative overflow-hidden rounded-2xl bg-white border border-[#eee1d0] shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-secondary-500/40 transition-all flex flex-col"
@@ -185,6 +194,7 @@ const BanquetMenu: React.FC<{ onOrderNow?: () => void }> = ({ onOrderNow }) => {
               <div className="relative overflow-hidden h-48">
                 <img src={dish.img} alt={ar ? dish.n : dish.en} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 <span className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                <span className="absolute top-3 start-3 inline-flex items-center gap-1 text-[11px] font-bold text-white bg-black/45 backdrop-blur-sm rounded-full px-2.5 py-1"><Flame className="w-3 h-3" />{dish.cal} {ar ? 'سعرة' : 'kcal'}</span>
                 {dish.star && (
                   <span className="absolute top-3 end-3 inline-flex items-center gap-1 text-[11px] font-bold text-ink bg-secondary-400 rounded-full px-2.5 py-1 shadow-md">
                     <Star className="w-3 h-3 fill-ink" />

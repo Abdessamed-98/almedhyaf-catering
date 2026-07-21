@@ -9,6 +9,8 @@ import { ToastProvider } from './ui';
 const WebsiteLayout = lazy(() => import('./apps/website/WebsiteLayout'));
 const Ordering = lazy(() => import('./apps/ordering/Ordering'));
 const POS = lazy(() => import('./apps/pos/POS'));
+const OrdersApp = lazy(() => import('./apps/orders/OrdersApp'));
+const DeliveryApp = lazy(() => import('./apps/delivery/DeliveryApp'));
 
 const ScreenLoader: React.FC = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -21,11 +23,15 @@ const VIEW_TO_HASH: Record<ViewState, string> = {
   WEBSITE: '#website',
   ORDERING: '#ordering',
   POS: '#pos',
+  ORDERS: '#orders',
+  DELIVERY: '#delivery',
 };
 const HASH_TO_VIEW: Record<string, ViewState> = {
   '#website': 'WEBSITE',
   '#ordering': 'ORDERING',
   '#pos': 'POS',
+  '#orders': 'ORDERS',
+  '#delivery': 'DELIVERY',
 };
 
 const AppContent: React.FC = () => {
@@ -34,7 +40,11 @@ const AppContent: React.FC = () => {
   // The URL hash is the source of truth for which view is shown.
   // e.g. /#website, /#ordering ; empty hash = portal.
   useEffect(() => {
-    const apply = () => setCurrentView(HASH_TO_VIEW[window.location.hash] ?? 'PORTAL');
+    // Match the base segment so sub-routes like #website/projects still resolve to WEBSITE.
+    const apply = () => {
+      const base = '#' + window.location.hash.replace(/^#/, '').split('/')[0];
+      setCurrentView(HASH_TO_VIEW[base] ?? 'PORTAL');
+    };
     apply();
     window.addEventListener('hashchange', apply);
     return () => window.removeEventListener('hashchange', apply);
@@ -58,6 +68,8 @@ const AppContent: React.FC = () => {
           onNavigateToWebsite={() => go('WEBSITE')}
           onNavigateToOrdering={() => go('ORDERING')}
           onNavigateToPOS={() => go('POS')}
+          onNavigateToOrders={() => go('ORDERS')}
+          onNavigateToDelivery={() => go('DELIVERY')}
         />
       )}
       {currentView === 'WEBSITE' && (
@@ -71,6 +83,12 @@ const AppContent: React.FC = () => {
       )}
       {currentView === 'POS' && (
         <POS onBackToPortal={() => go('PORTAL')} />
+      )}
+      {currentView === 'ORDERS' && (
+        <OrdersApp onBackToPortal={() => go('PORTAL')} />
+      )}
+      {currentView === 'DELIVERY' && (
+        <DeliveryApp onBackToPortal={() => go('PORTAL')} />
       )}
     </div>
     </Suspense>

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Send, Twitter, Instagram, Facebook, Clock, CheckCircle2 } from 'lucide-react';
+import React from 'react';
+import { Mail, Phone, MapPin, Twitter, Instagram, Facebook, Clock } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { Button, Field, Input, Textarea } from '../../ui';
 import { motion } from 'motion/react';
+import QuoteForm from './QuoteForm';
 
 const SOCIAL_LINKS = [
   { label: 'Twitter', href: 'https://twitter.com', Icon: Twitter },
@@ -20,15 +20,6 @@ const fadeUp = {
 const Contact: React.FC = () => {
   const { t, language } = useLanguage();
   const ar = language === 'ar';
-  const [formData, setFormData] = useState({ name: '', email: '', message: '' });
-  const [sent, setSent] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSent(true);
-    setFormData({ name: '', email: '', message: '' });
-  };
-
   const infoBlocks = [
     {
       Icon: Phone,
@@ -64,8 +55,8 @@ const Contact: React.FC = () => {
       <section className="bg-[#fbf7ef] text-ink py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-6">
           <motion.div {...fadeUp} className="mb-12">
-            <Kicker>{ar ? 'ابقَ على تواصل' : 'Get in touch'}</Kicker>
-            <h2 className="mt-2 font-display font-black text-3xl md:text-5xl text-brand-800 leading-tight">{ar ? 'معلومات الاتصال ونموذج الرسالة' : 'Contact details & message form'}</h2>
+            <Kicker>{ar ? 'تواصل معنا' : 'Get in touch'}</Kicker>
+            <h2 className="mt-2 font-display font-black text-3xl md:text-5xl text-brand-800 leading-tight">{ar ? 'لنخطّط لمشروع إعاشتك القادم' : 'Let’s plan your next catering project'}</h2>
           </motion.div>
 
           <div className="grid lg:grid-cols-5 gap-6 items-start">
@@ -139,48 +130,10 @@ const Contact: React.FC = () => {
               className="lg:col-span-3"
             >
               <div className="rounded-2xl bg-white border border-[#eee1d0] shadow-sm p-8 lg:p-10">
-                <h3 className="text-2xl font-display font-bold text-brand-800 mb-2">{ar ? 'أرسل لنا رسالة' : 'Send us a message'}</h3>
-                <p className="text-gray-500 mb-6 text-sm">{ar ? 'املأ النموذج وسنعاود التواصل معك في أقرب وقت.' : 'Fill in the form and we will get back to you shortly.'}</p>
+                <h3 className="text-2xl font-display font-bold text-brand-800 mb-2">{ar ? 'اطلب عرض سعر' : 'Request a quote'}</h3>
+                <p className="text-gray-500 mb-6 text-sm">{ar ? 'أخبرنا عن مشروع الإعاشة وسنعاود التواصل معك بعرض سعر مخصّص.' : 'Tell us about your catering project and we’ll reply with a tailored quote.'}</p>
 
-                {sent && (
-                  <div className="mb-6 rounded-2xl bg-green-50 border border-green-200 text-green-800 px-5 py-4 text-sm font-bold flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 shrink-0" />
-                    {ar ? 'شكراً لتواصلك معنا! سيتم الرد عليك قريباً.' : 'Thank you for contacting us! We will reply shortly.'}
-                  </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <Field label={ar ? 'الاسم الكريم' : 'Full Name'} htmlFor="contact-name">
-                    <Input
-                      id="contact-name"
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    />
-                  </Field>
-                  <Field label={ar ? 'البريد الإلكتروني' : 'Email Address'} htmlFor="contact-email">
-                    <Input
-                      id="contact-email"
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={e => setFormData({ ...formData, email: e.target.value })}
-                    />
-                  </Field>
-                  <Field label={ar ? 'الرسالة' : 'Message'} htmlFor="contact-message">
-                    <Textarea
-                      id="contact-message"
-                      rows={5}
-                      required
-                      value={formData.message}
-                      onChange={e => setFormData({ ...formData, message: e.target.value })}
-                    />
-                  </Field>
-                  <Button type="submit" variant="gold" size="lg" block>
-                    <Send className="w-5 h-5" /> {ar ? 'إرسال الرسالة' : 'Send Message'}
-                  </Button>
-                </form>
+                <QuoteForm idPrefix="contact" />
               </div>
             </motion.div>
 

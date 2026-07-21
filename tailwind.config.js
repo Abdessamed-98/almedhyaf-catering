@@ -67,6 +67,7 @@ const clientTheme = {
 };
 
 export default {
+  darkMode: 'class', // website dark mode — the `dark` class sits on the site wrapper
   content: [
     './index.html',
     './src/**/*.{ts,tsx}',

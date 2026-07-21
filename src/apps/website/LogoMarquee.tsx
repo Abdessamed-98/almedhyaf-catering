@@ -4,6 +4,10 @@ interface LogoMarqueeProps {
   logos: string[];
   /** Auto-scroll speed in pixels per frame (~60fps). Lower = slower. */
   speed?: number;
+  /** Click handler — receives the original logo index. Makes logos interactive. */
+  onSelect?: (i: number) => void;
+  /** Optional accessible labels per logo (same order as `logos`). */
+  labels?: string[];
 }
 
 /**
@@ -12,7 +16,7 @@ interface LogoMarqueeProps {
  * logo gets a translateY + rotate based on its distance from centre, so the row
  * dips in the middle and rises at the edges, each logo tilted to follow the arc.
  */
-const LogoMarquee: React.FC<LogoMarqueeProps> = ({ logos, speed = 0.4 }) => {
+const LogoMarquee: React.FC<LogoMarqueeProps> = ({ logos, speed = 0.4, onSelect, labels }) => {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -71,18 +75,27 @@ const LogoMarquee: React.FC<LogoMarqueeProps> = ({ logos, speed = 0.4 }) => {
       ref={ref}
       dir="ltr"
       className="flex items-center overflow-hidden no-scrollbar py-10"
-      aria-hidden="true"
     >
-      {loop.map((src, i) => (
-        <div key={i} className="shrink-0 px-7 md:px-10 flex items-center justify-center" style={{ willChange: 'transform' }}>
-          <img
-            src={src}
-            alt=""
-            loading="lazy"
-            className="h-36 md:h-52 w-auto object-contain pointer-events-none select-none"
-          />
-        </div>
-      ))}
+      {loop.map((src, i) => {
+        const idx = i % logos.length;
+        return (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onSelect?.(idx)}
+            aria-label={labels?.[idx]}
+            className="shrink-0 px-7 md:px-10 flex items-center justify-center appearance-none bg-transparent border-0 cursor-pointer group"
+            style={{ willChange: 'transform' }}
+          >
+            <img
+              src={src}
+              alt=""
+              loading="lazy"
+              className="partner-logo h-36 md:h-52 w-auto object-contain select-none transition-transform duration-300 group-hover:scale-110"
+            />
+          </button>
+        );
+      })}
     </div>
   );
 };

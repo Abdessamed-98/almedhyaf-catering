@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ChevronLeft, X, Search, Plus, Minus, Trash2, Bike, ShoppingBag, Utensils,
   User, Phone, MapPin, Banknote, CreditCard, Smartphone, Wallet, Check,
@@ -7,7 +7,23 @@ import { POS_MENU, POS_CATEGORIES, PosProduct } from '../../data/menu';
 import { Order, OType, OPay, OItem, OAddon, itemTotal, orderTotal, newOrderId } from '../../data/orders';
 import { AddressPicker } from './maps';
 
-interface Props { ar: boolean; dir: string; onCancel: () => void; onCreate: (o: Order) => void; }
+// Mock "saved clients" — typing a phone surfaces these as if pulled from the CRM.
+const SAVED_CLIENTS: { phone: string; name: string; address: string }[] = [
+  { phone: '512345678', name: 'عبدالله العمري', address: 'العزيزية - شارع 10' },
+  { phone: '505551234', name: 'سارة الحربي', address: 'الششة - طريق الملك عبدالعزيز' },
+  { phone: '533207788', name: 'محمد الغامدي', address: 'العوالي - حي النور' },
+  { phone: '561109923', name: 'نورة القحطاني', address: 'الزاهر - شارع الحج' },
+  { phone: '598812200', name: 'فهد الشهري', address: 'الرصيفة - شارع 22' },
+];
+
+interface Props {
+  ar: boolean; dir: string; onCancel: () => void; onCreate: (o: Order) => void;
+  /** host delegates the back gesture here; handler returns true when consumed (stepped a phase / closed an overlay) */
+  registerBack?: (handler: (() => boolean) | null) => void;
+}
+
+// a parallel draft order (3 held at once, like the POS multi-cart)
+interface Draft { id: number; otype: OType; lines: OItem[]; customer: string; phone: string; address: string; loc: { lat: number; lng: number } | null; payment: OPay; }
 
 const TYPES: { id: OType; ar: string; en: string; Icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'DELIVERY', ar: 'توصيل', en: 'Delivery', Icon: Bike },
@@ -21,27 +37,59 @@ const PAYS: { id: OPay; ar: string; en: string; Icon: React.ComponentType<{ clas
   { id: 'ONLINE', ar: 'إلكتروني', en: 'Online', Icon: Wallet },
 ];
 
-const NewOrder: React.FC<Props> = ({ ar, dir, onCancel, onCreate }) => {
+const NewOrder: React.FC<Props> = ({ ar, dir, onCancel, onCreate, registerBack }) => {
   const sar = ar ? 'ر.س' : 'SAR';
-  const [phase, setPhase] = useState<'menu' | 'review'>('menu');
-  const [otype, setOtype] = useState<OType>('DELIVERY');
+  const [phase, setPhase] = useState<'menu' | 'cart' | 'checkout'>('menu');
   const [cat, setCat] = useState('الكل');
   const [q, setQ] = useState('');
-  const [lines, setLines] = useState<OItem[]>([]);
   const [modProduct, setModProduct] = useState<PosProduct | null>(null);
   const [modSel, setModSel] = useState<Record<number, number[]>>({});
   const [modQty, setModQty] = useState(1);
-  const [customer, setCustomer] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [loc, setLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [picking, setPicking] = useState(false);
-  const [payment, setPayment] = useState<OPay>('CASH');
+  const [sugOpen, setSugOpen] = useState(false);
+
+  // system back: overlays close first, phases step back; false = at menu root (host closes the screen)
+  useEffect(() => {
+    registerBack?.(() => {
+      if (picking) { setPicking(false); return true; }
+      if (modProduct) { setModProduct(null); return true; }
+      if (phase === 'checkout') { setPhase('cart'); return true; }
+      if (phase === 'cart') { setPhase('menu'); return true; }
+      return false;
+    });
+  });
+  useEffect(() => () => registerBack?.(null), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── 3 parallel draft orders ──
+  const mkDraft = (id: number): Draft => ({ id, otype: 'DELIVERY', lines: [], customer: '', phone: '', address: '', loc: null, payment: 'CASH' });
+  const [drafts, setDrafts] = useState<Draft[]>(() => [mkDraft(1), mkDraft(2), mkDraft(3)]);
+  const [activeId, setActiveId] = useState(1);
+  const draft = drafts.find(d => d.id === activeId) ?? drafts[0];
+  const patchDraft = (fn: (d: Draft) => Draft) => setDrafts(ds => ds.map(d => d.id === activeId ? fn(d) : d));
+  const switchTab = (id: number) => { setActiveId(id); setPhase('menu'); };
+
+  // active-draft aliases so the rest of the screen reads/writes the current tab unchanged
+  const otype = draft.otype;
+  const lines = draft.lines;
+  const customer = draft.customer;
+  const phone = draft.phone;
+  const address = draft.address;
+  const loc = draft.loc;
+  const payment = draft.payment;
+  const setOtype = (t: OType) => patchDraft(d => ({ ...d, otype: t }));
+  const setLines = (upd: OItem[] | ((ls: OItem[]) => OItem[])) => patchDraft(d => ({ ...d, lines: typeof upd === 'function' ? (upd as (ls: OItem[]) => OItem[])(d.lines) : upd }));
+  const setCustomer = (v: string) => patchDraft(d => ({ ...d, customer: v }));
+  const setPhone = (v: string) => patchDraft(d => ({ ...d, phone: v }));
+  const setAddress = (v: string) => patchDraft(d => ({ ...d, address: v }));
+  const setLoc = (v: { lat: number; lng: number } | null) => patchDraft(d => ({ ...d, loc: v }));
+  const setPayment = (v: OPay) => patchDraft(d => ({ ...d, payment: v }));
 
   const cats = ['الكل', ...POS_CATEGORIES];
   const filtered = POS_MENU.filter(p => (cat === 'الكل' || p.category === cat) && (!q.trim() || p.name.includes(q)));
   const total = orderTotal(lines);
   const count = lines.reduce((s, l) => s + l.qty, 0);
+  const clientMatches = phone.length >= 2 ? SAVED_CLIENTS.filter(c => c.phone.startsWith(phone)).slice(0, 4) : [];
+  const pickClient = (c: typeof SAVED_CLIENTS[number]) => { setPhone(c.phone); setCustomer(c.name); setAddress(c.address); setSugOpen(false); };
 
   const lineKey = (p: PosProduct, addons: OAddon[]) => p.id + '|' + addons.map(a => a.name).slice().sort().join(',');
   const addLine = (p: PosProduct, addons: OAddon[], qty: number) => setLines(ls => {
@@ -88,7 +136,26 @@ const NewOrder: React.FC<Props> = ({ ar, dir, onCancel, onCreate }) => {
     };
     if (otype === 'DELIVERY') { if (address.trim()) o.address = address.trim(); if (loc) { o.lat = loc.lat; o.lng = loc.lng; } }
     onCreate(o);
+    patchDraft(() => mkDraft(activeId)); // clear this tab, keep the other drafts
+    setPhase('menu');
   };
+
+  // 3 draft-order tabs — square number buttons (POS style, no icons), aligned to the top-left
+  const draftTabs = (
+    <div className="flex items-center gap-1.5 ms-auto shrink-0">
+      {drafts.map((d, i) => {
+        const on = d.id === activeId;
+        const n = d.lines.reduce((s, l) => s + l.qty, 0);
+        const filled = n > 0;
+        return (
+          <button key={d.id} onClick={() => switchTab(d.id)} className={`relative w-11 h-11 rounded-xl grid place-items-center text-sm font-bold transition-colors ${on ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/30' : filled ? 'bg-white border border-gray-200 text-gray-700 hover:border-brand-300' : 'bg-gray-50 border border-dashed border-gray-200 text-gray-400 hover:border-gray-300'}`}>
+            {filled && <span className="absolute -top-1.5 -end-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold grid place-items-center ring-2 ring-white bg-secondary-500 text-ink">{n}</span>}
+            {i + 1}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div dir={dir} className="absolute inset-0 z-50 bg-[#FAF7F2] flex flex-col font-sans text-ink">
@@ -98,6 +165,7 @@ const NewOrder: React.FC<Props> = ({ ar, dir, onCancel, onCreate }) => {
             <div className="flex items-center gap-2">
               <button onClick={onCancel} aria-label={ar ? 'إلغاء' : 'Cancel'} className="w-10 h-10 rounded-xl hover:bg-gray-100 grid place-items-center text-gray-500 shrink-0"><X className="w-5 h-5" /></button>
               <h1 className="font-display font-bold text-xl text-gray-900">{ar ? 'طلب جديد' : 'New order'}</h1>
+              {draftTabs}
             </div>
             <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
               {TYPES.map(tp => { const on = otype === tp.id; return (
@@ -134,19 +202,20 @@ const NewOrder: React.FC<Props> = ({ ar, dir, onCancel, onCreate }) => {
 
           {count > 0 && (
             <div className="absolute bottom-4 inset-x-4 z-20">
-              <button onClick={() => setPhase('review')} className="w-full h-14 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-600/40 flex items-center gap-3 px-4 font-bold transition-colors">
+              <button onClick={() => setPhase('cart')} className="w-full h-14 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-600/40 flex items-center gap-3 px-4 font-bold transition-colors">
                 <span className="w-8 h-8 rounded-full bg-white/20 grid place-items-center text-sm">{count}</span>
-                <span className="flex-1 text-start">{ar ? 'متابعة' : 'Continue'}</span>
+                <span className="flex-1 text-start">{ar ? 'عرض السلة' : 'View cart'}</span>
                 <span>{total.toFixed(0)} {sar}</span>
               </button>
             </div>
           )}
         </>
-      ) : (
+      ) : phase === 'cart' ? (
         <>
           <div className="bg-white px-4 pt-4 pb-3 border-b border-gray-100 shrink-0 flex items-center gap-2">
             <button onClick={() => setPhase('menu')} aria-label={ar ? 'رجوع' : 'Back'} className="w-10 h-10 rounded-xl hover:bg-gray-100 grid place-items-center text-gray-500 shrink-0"><ChevronLeft className={`w-6 h-6 ${ar ? 'rotate-180' : ''}`} /></button>
-            <h1 className="font-display font-bold text-xl text-gray-900">{ar ? 'مراجعة الطلب' : 'Review order'}</h1>
+            <h1 className="font-display font-bold text-xl text-gray-900">{ar ? 'السلة' : 'Cart'}</h1>
+            {draftTabs}
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-28">
@@ -173,10 +242,64 @@ const NewOrder: React.FC<Props> = ({ ar, dir, onCancel, onCreate }) => {
               <button onClick={() => setPhase('menu')} className="w-full py-2.5 rounded-xl border border-dashed border-brand-300 text-brand-600 font-semibold text-sm hover:bg-brand-50 transition-colors">+ {ar ? 'إضافة أصناف' : 'Add items'}</button>
             </div>
 
+            <div className="bg-white border border-gray-100 rounded-2xl p-3.5 space-y-1.5 text-sm">
+              <div className="flex justify-between text-gray-500"><span>{ar ? 'المجموع قبل الضريبة' : 'Subtotal'}</span><span>{(total - total * 15 / 115).toFixed(2)}</span></div>
+              <div className="flex justify-between text-gray-500"><span>{ar ? 'ض.ق.م (15%)' : 'VAT (15%)'}</span><span>{(total * 15 / 115).toFixed(2)}</span></div>
+              <div className="flex justify-between items-center pt-1.5 border-t border-dashed border-gray-200"><span className="font-display font-bold text-gray-900">{ar ? 'الإجمالي' : 'Total'}</span><span className="font-display font-bold text-lg text-brand-700">{total.toFixed(2)} {sar}</span></div>
+            </div>
+          </div>
+
+          <div className="absolute bottom-0 inset-x-0 p-4 bg-white border-t border-gray-100">
+            <button onClick={() => setPhase('checkout')} disabled={!lines.length} className="w-full h-14 rounded-2xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-bold flex items-center justify-center gap-2 transition-colors">{ar ? 'متابعة للدفع' : 'Proceed to checkout'}<ChevronLeft className={`w-5 h-5 ${!ar ? 'rotate-180' : ''}`} /></button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="bg-white px-4 pt-4 pb-3 border-b border-gray-100 shrink-0 flex items-center gap-2">
+            <button onClick={() => setPhase('cart')} aria-label={ar ? 'رجوع' : 'Back'} className="w-10 h-10 rounded-xl hover:bg-gray-100 grid place-items-center text-gray-500 shrink-0"><ChevronLeft className={`w-6 h-6 ${ar ? 'rotate-180' : ''}`} /></button>
+            <h1 className="font-display font-bold text-xl text-gray-900">{ar ? 'إتمام الطلب' : 'Checkout'}</h1>
+            {draftTabs}
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-28">
+            {/* order recap — tap to jump back to the cart and edit items */}
+            <button onClick={() => setPhase('cart')} className="w-full flex items-center gap-3 bg-white border border-gray-100 rounded-2xl p-3.5 text-start hover:border-brand-300 transition-colors">
+              <span className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 grid place-items-center shrink-0"><ShoppingBag className="w-5 h-5" /></span>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-gray-900 text-sm">{count} {ar ? 'صنف' : 'items'} · {(() => { const T = TYPES.find(x => x.id === otype)!; return ar ? T.ar : T.en; })()}</p>
+                <p className="text-xs text-gray-400 truncate">{lines.map(l => `${l.product.name}${l.qty > 1 ? ` ×${l.qty}` : ''}`).join('، ')}</p>
+              </div>
+              <span className="text-sm font-bold text-brand-600 shrink-0">{ar ? 'تعديل' : 'Edit'}</span>
+            </button>
+
             <div className="bg-white border border-gray-100 rounded-2xl p-3.5 space-y-3">
               <h3 className="font-bold text-gray-900">{ar ? 'بيانات العميل' : 'Customer'}</h3>
+              {/* phone first — typing surfaces matching saved clients */}
+              <div className="relative">
+                <div className="flex gap-2" dir="ltr">
+                  <span className="h-11 px-3 grid place-items-center rounded-xl bg-gray-100 text-sm font-bold text-gray-500 shrink-0">🇸🇦 +966</span>
+                  <div className="relative flex-1">
+                    <Phone className="w-4 h-4 text-gray-400 absolute top-3.5 start-3" />
+                    <input value={phone} onChange={e => { setPhone(e.target.value.replace(/[^0-9]/g, '')); setSugOpen(true); }} onFocus={() => setSugOpen(true)} onBlur={() => setTimeout(() => setSugOpen(false), 150)} inputMode="tel" placeholder="5x xxx xxxx" className="w-full h-11 bg-gray-50 border border-gray-200 rounded-xl ps-9 pe-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-brand-500" />
+                  </div>
+                </div>
+                {sugOpen && clientMatches.length > 0 && (
+                  <div className="absolute z-30 top-full mt-1.5 inset-x-0 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden" dir={ar ? 'rtl' : 'ltr'}>
+                    {clientMatches.map(c => (
+                      <button key={c.phone} onMouseDown={e => e.preventDefault()} onClick={() => pickClient(c)} className="w-full flex items-center gap-3 px-3 py-2.5 text-start hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                        <span className="w-9 h-9 rounded-full bg-brand-50 text-brand-600 grid place-items-center text-xs font-bold shrink-0">{c.name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('')}</span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block font-bold text-sm text-gray-900 truncate">{c.name}</span>
+                          <span className="block text-xs text-gray-400" dir="ltr">+966 {c.phone}</span>
+                        </span>
+                        <span className="text-[10px] font-bold text-brand-600 bg-brand-50 rounded-full px-2 py-0.5 shrink-0">{ar ? 'عميل مسجّل' : 'Saved'}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* name second */}
               <div className="relative"><User className="w-4 h-4 text-gray-400 absolute top-3.5 start-3" /><input value={customer} onChange={e => setCustomer(e.target.value)} placeholder={ar ? 'اسم العميل' : 'Customer name'} className="w-full h-11 bg-gray-50 border border-gray-200 rounded-xl ps-9 pe-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-brand-500" /></div>
-              <div className="flex gap-2" dir="ltr"><span className="h-11 px-3 grid place-items-center rounded-xl bg-gray-100 text-sm font-bold text-gray-500 shrink-0">🇸🇦 +966</span><div className="relative flex-1"><Phone className="w-4 h-4 text-gray-400 absolute top-3.5 start-3" /><input value={phone} onChange={e => setPhone(e.target.value.replace(/[^0-9]/g, ''))} inputMode="tel" placeholder="5x xxx xxxx" className="w-full h-11 bg-gray-50 border border-gray-200 rounded-xl ps-9 pe-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-brand-500" /></div></div>
             </div>
 
             {otype === 'DELIVERY' && (

@@ -4,12 +4,14 @@ import {
   Navigation, Check, X, Plus, Clock, ChevronLeft, CreditCard, Banknote, Smartphone, Wallet,
   Store, Bell, Globe, LogOut, TrendingUp, Package, Search, Timer, CircleDollarSign,
   CalendarClock, Zap, Volume2, VolumeX, RotateCcw, MoreVertical, Pencil, Star, Car,
+  Printer, Receipt, ChefHat, Moon,
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../ui';
 import { Order, OType, OStatus, OPay, SEED_ORDERS, makeOrder, nextStatus, ACTIVE, itemTotal } from '../../data/orders';
 import { MiniMap, AddressPicker } from './maps';
 import NewOrder from './NewOrder';
+import { useHardwareBack } from '../../hooks/useHardwareBack';
 
 interface Props { onBackToPortal: () => void; }
 type Tab = 'orders' | 'history' | 'stats' | 'account';
@@ -53,7 +55,7 @@ const PAY: Record<OPay, { ar: string; en: string; Icon: React.ComponentType<{ cl
 
 
 const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
-  const { language, toggleLanguage, dir } = useLanguage();
+  const { language, setLanguage, dir } = useLanguage();
   const ar = language === 'ar';
   const toast = useToast();
   const sar = ar ? 'ر.س' : 'SAR';
@@ -61,8 +63,11 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
   const [orders, setOrders] = useState<Order[]>(SEED_ORDERS);
   const [tab, setTab] = useState<Tab>('orders');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<OStatus>('NEW');
+  const [filter, setFilter] = useState<OStatus | 'SCHEDULED'>('NEW');
   const [scrolled, setScrolled] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [padFab, setPadFab] = useState(false); // reserve bottom space for the floating + ONLY when the list overflows
   const [liveSim, setLiveSim] = useState(true);
   const [sound, setSound] = useState(true);
   const [hist, setHist] = useState('');
@@ -70,11 +75,38 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
   const [entering, setEntering] = useState<Set<string>>(() => new Set());
   const [undo, setUndo] = useState<{ msg: string; prev: Order } | null>(null);
   const [accepting, setAccepting] = useState<Order | null>(null);
+  const [printOrder, setPrintOrder] = useState<Order | null>(null);
+  const [confirming, setConfirming] = useState<{ o: Order; kind: 'advance' | 'startNow' } | null>(null);
   const [rejecting, setRejecting] = useState<Order | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [editAddr, setEditAddr] = useState<Order | null>(null);
-  const [pickDriver, setPickDriver] = useState<Order | null>(null);
+  const [pickDriver, setPickDriver] = useState<{ o: Order; advance: boolean } | null>(null);
   const [creating, setCreating] = useState(false);
+  const [langOpen, setLangOpen] = useState(false); // language page (under Account)
+  const [appDark, setAppDark] = useState(() => localStorage.getItem('mgr-dark') === '1'); // app dark mode (settings toggle)
+  useEffect(() => { localStorage.setItem('mgr-dark', appDark ? '1' : '0'); }, [appDark]);
+  const newOrderBack = useRef<(() => boolean) | null>(null); // NewOrder's own back handler (phases/overlays)
+
+  // phone/browser back follows in-app navigation: modals → new-order → detail → board → portal
+  useHardwareBack(() => {
+    if (langOpen) { setLangOpen(false); return true; }
+    if (printOrder) { setPrintOrder(null); return true; }
+    if (accepting) { setAccepting(null); return true; }
+    if (rejecting) { setRejecting(null); return true; }
+    if (confirming) { setConfirming(null); return true; }
+    if (pickDriver) { setPickDriver(null); return true; }
+    if (editAddr) { setEditAddr(null); return true; }
+    if (menuOpen) { setMenuOpen(false); return true; }
+    if (creating) {
+      // let the new-order screen step its own phases/overlays back first;
+      // only close the whole screen from its menu root
+      if (newOrderBack.current?.()) return true;
+      setCreating(false); return true;
+    }
+    if (selectedId) { setSelectedId(null); return true; }
+    if (tab !== 'orders') { setTab('orders'); return true; }
+    onBackToPortal(); return true;
+  });
   const undoTimer = useRef<ReturnType<typeof setTimeout>>();
   const audioRef = useRef<AudioContext | null>(null);
 
@@ -126,8 +158,12 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
 
   const accept = (o: Order) => setAccepting(o);
   const confirmAccept = (o: Order, mins: number) => {
-    setAccepting(null);
-    withUndo(o, `${ar ? 'تم قبول' : 'Accepted'} ${o.id}`, () => patch(o.id, p => ({ ...p, status: 'PREPARING', prepMin: mins, statusSince: Date.now() })));
+    setAccepting(null); setSelectedId(null);
+    const scheduled = o.scheduledFor != null && o.scheduledFor > Date.now();
+    withUndo(o, `${ar ? 'تم قبول' : 'Accepted'} ${o.id}`, () => patch(o.id, p => ({
+      ...p, status: 'PREPARING', statusSince: Date.now(),
+      ...(scheduled ? { notifyBefore: mins } : { prepMin: mins }),
+    })));
   };
   const reject = (o: Order) => setRejecting(o);
   const confirmReject = (o: Order, reason: string) => {
@@ -139,13 +175,48 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
     if (!ns) return;
     withUndo(o, `${o.id} → ${ar ? STATUS[ns].ar : STATUS[ns].en}`, () => patch(o.id, p => ({ ...p, status: ns, statusSince: Date.now(), driver: ns === 'ON_WAY' && !p.driver ? REC_DRIVER.name : p.driver })));
   };
-  const setDriver = (o: Order, name: string) => { patch(o.id, p => ({ ...p, driver: name })); setPickDriver(null); toast(ar ? `تم تعيين ${name}` : `Assigned ${name}`); };
+  // start a scheduled order's prep early: clear the schedule so it joins the normal flow
+  const startNow = (o: Order) => withUndo(o, `${ar ? 'بدأ التحضير' : 'Started'} ${o.id}`, () => patch(o.id, p => ({ ...p, scheduledFor: undefined, statusSince: Date.now() })));
+  const chooseDriver = (name: string) => {
+    if (!pickDriver) return;
+    const { o, advance: dispatch } = pickDriver;
+    setPickDriver(null);
+    if (dispatch) {
+      // READY → out for delivery: assign the driver and advance in one step, back to the board
+      setSelectedId(null);
+      withUndo(o, `${o.id} → ${ar ? STATUS.ON_WAY.ar : STATUS.ON_WAY.en}`, () => patch(o.id, p => ({ ...p, status: 'ON_WAY', statusSince: Date.now(), driver: name })));
+    } else {
+      patch(o.id, p => ({ ...p, driver: name }));
+      toast(ar ? `تم تعيين ${name}` : `Assigned ${name}`);
+    }
+  };
   // manual corrections (when the undo window is missed)
   const flowOf = (o: Order): OStatus[] => o.type === 'DELIVERY' ? ['NEW', 'PREPARING', 'READY', 'ON_WAY', 'DONE'] : ['NEW', 'PREPARING', 'READY', 'DONE'];
   const prevStatus = (o: Order): OStatus | null => { const f = flowOf(o); const i = f.indexOf(o.status); return i > 0 ? f[i - 1] : null; };
   const stepBack = (o: Order) => { const ps = prevStatus(o); if (!ps) return; withUndo(o, `${o.id} ← ${ar ? STATUS[ps].ar : STATUS[ps].en}`, () => patch(o.id, p => ({ ...p, status: ps, statusSince: Date.now() }))); };
   const restore = (o: Order) => withUndo(o, `${ar ? 'تمت الاستعادة' : 'Restored'} ${o.id}`, () => patch(o.id, p => ({ ...p, status: 'PREPARING', statusSince: Date.now(), rejectReason: undefined })));
-  const submitOrder = (o: Order) => { addOrder(o); setCreating(false); setTab('orders'); setFilter('NEW'); toast(ar ? `تم إنشاء ${o.id}` : `Created ${o.id}`); };
+  // every non-NEW state change is confirmed first (NEW uses the prep-time / notify popup instead)
+  const requestAdvance = (o: Order) => {
+    // delivery orders choose the driver at the READY → out-for-delivery step (modal, not a confirm)
+    if (o.type === 'DELIVERY' && o.status === 'READY') { setPickDriver({ o, advance: true }); return; }
+    setConfirming({ o, kind: 'advance' });
+  };
+  const requestStartNow = (o: Order) => setConfirming({ o, kind: 'startNow' });
+  const runConfirm = () => {
+    if (!confirming) return;
+    const { o, kind } = confirming;
+    setConfirming(null); setSelectedId(null);
+    if (kind === 'startNow') startNow(o); else advance(o);
+  };
+  const printTicket = (kind: 'client' | 'kitchen') => {
+    if (!printOrder) return;
+    toast(kind === 'client'
+      ? (ar ? `طباعة فاتورة العميل ${printOrder.id}` : `Printing customer receipt ${printOrder.id}`)
+      : (ar ? `طباعة تذكرة المطبخ ${printOrder.id}` : `Printing kitchen ticket ${printOrder.id}`));
+    setPrintOrder(null);
+  };
+  // keep the new-order screen open after creating (its draft tabs manage their own reset); the ✕ closes it
+  const submitOrder = (o: Order) => { addOrder(o); setFilter('NEW'); toast(ar ? `تم إنشاء ${o.id}` : `Created ${o.id}`); };
 
   const ago = (ms: number) => {
     const m = Math.max(0, Math.round((now - ms) / 60000));
@@ -172,12 +243,30 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
 
   const active = orders.filter(o => ACTIVE.includes(o.status));
   const newCount = orders.filter(o => o.status === 'NEW').length;
-  const shown = active.filter(o => o.status === filter).sort((a, b) => filter === 'NEW' ? b.placedAt - a.placedAt : a.statusSince - b.statusSince);
+  // A scheduled order shows in NEW (awaiting acceptance); once accepted (past NEW) it waits
+  // in the Scheduled tab until its time arrives, then flows through the normal statuses.
+  const isSchedWaiting = (o: Order) => o.scheduledFor != null && o.status !== 'NEW' && o.scheduledFor > now;
+  const shown = (filter === 'SCHEDULED'
+    ? active.filter(isSchedWaiting)
+    : active.filter(o => o.status === filter && !isSchedWaiting(o))
+  ).sort((a, b) => filter === 'SCHEDULED' ? (a.scheduledFor! - b.scheduledFor!) : filter === 'NEW' ? b.placedAt - a.placedAt : a.statusSince - b.statusSince);
+
+  // Only add the floating-button clearance when the cards actually overflow the list
+  // (measuring the content wrapper, which excludes the spacer, so there's no hysteresis).
+  useEffect(() => {
+    const list = listRef.current, content = contentRef.current;
+    if (!list || !content) return;
+    const check = () => setPadFab(content.offsetHeight > list.clientHeight - 32);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, [shown.length, filter]);
   const past = orders.filter(o => !ACTIVE.includes(o.status)).filter(o => !hist.trim() || o.id.includes(hist) || o.customer.includes(hist)).sort((a, b) => b.placedAt - a.placedAt);
 
   // ── order card ──
   const card = (o: Order, withActions: boolean) => {
     const t = TYPE[o.type], st = STATUS[o.status];
+    const waiting = isSchedWaiting(o);
     return (
       <div key={o.id} onClick={() => setSelectedId(o.id)} className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-3 cursor-pointer active:scale-[0.99] transition-transform ${entering.has(o.id) ? 'order-in' : ''}`}>
         <div className="flex items-start gap-2.5">
@@ -185,7 +274,7 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-bold text-gray-900" dir="ltr">{o.id}</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${st.cls}`}>{ar ? st.ar : st.en}</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${waiting ? 'bg-indigo-50 text-indigo-600' : st.cls}`}>{waiting ? (ar ? 'مجدول' : 'Scheduled') : (ar ? st.ar : st.en)}</span>
               {o.scheduledFor != null
                 ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 flex items-center gap-1"><CalendarClock className="w-3 h-3" />{clock(o.scheduledFor)}</span>
                 : <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 flex items-center gap-1"><Zap className="w-3 h-3" />{ar ? 'فوري' : 'ASAP'}</span>}
@@ -203,32 +292,60 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
             <button onClick={e => { e.stopPropagation(); reject(o); }} className="px-4 py-2.5 rounded-xl bg-gray-100 text-gray-600 font-semibold text-sm hover:bg-gray-200">{ar ? 'رفض' : 'Reject'}</button>
             <button onClick={e => { e.stopPropagation(); accept(o); }} className="flex-1 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm flex items-center justify-center gap-1.5"><Check className="w-4 h-4" />{ar ? 'قبول الطلب' : 'Accept'}</button>
           </div>
+        ) : waiting ? (
+          <button onClick={e => { e.stopPropagation(); requestStartNow(o); }} className="w-full mt-3 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm flex items-center justify-center gap-1.5"><CalendarClock className="w-4 h-4" />{ar ? 'بدء التحضير الآن' : 'Start prep now'}</button>
+        ) : o.status === 'ON_WAY' ? (
+          <div className="w-full mt-3 py-2.5 rounded-xl bg-indigo-50 text-indigo-600 font-bold text-sm flex items-center justify-center gap-1.5"><Bike className="w-4 h-4" />{ar ? 'مع السائق' : 'With the driver'}</div>
         ) : (
-          <button onClick={e => { e.stopPropagation(); advance(o); }} className="w-full mt-3 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm flex items-center justify-center gap-1.5">{o.type === 'DELIVERY' && o.status === 'READY' ? <Navigation className="w-4 h-4" /> : <Check className="w-4 h-4" />}{actionLabel(o)}</button>
+          <button onClick={e => { e.stopPropagation(); requestAdvance(o); }} className="w-full mt-3 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm flex items-center justify-center gap-1.5">{o.type === 'DELIVERY' && o.status === 'READY' ? <Navigation className="w-4 h-4" /> : <Check className="w-4 h-4" />}{actionLabel(o)}</button>
         ))}
       </div>
     );
   };
 
   // ── tab: orders board ──
-  const FILTERS: OStatus[] = ['NEW', 'PREPARING', 'READY', 'ON_WAY'];
+  const FILTERS: { key: OStatus | 'SCHEDULED'; ar: string; en: string; Icon: React.ComponentType<{ className?: string }> }[] = [
+    { key: 'NEW', ar: STATUS.NEW.ar, en: STATUS.NEW.en, Icon: Bell },
+    { key: 'PREPARING', ar: STATUS.PREPARING.ar, en: STATUS.PREPARING.en, Icon: Utensils },
+    { key: 'READY', ar: STATUS.READY.ar, en: STATUS.READY.en, Icon: ShoppingBag },
+    { key: 'ON_WAY', ar: STATUS.ON_WAY.ar, en: STATUS.ON_WAY.en, Icon: Bike },
+    { key: 'SCHEDULED', ar: 'مجدول', en: 'Scheduled', Icon: CalendarClock },
+  ];
   const renderOrders = () => (
     <div className="h-full flex flex-col">
       <div className="bg-white px-4 pt-5 pb-3 border-b border-gray-100 shrink-0">
-        <div className={`flex items-center justify-between overflow-hidden transition-all duration-200 ${scrolled ? 'h-0 opacity-0' : 'h-10 opacity-100 mb-3'}`}>
-          <h1 className="text-2xl font-display font-bold text-gray-900">{ar ? 'الطلبات' : 'Orders'}</h1>
-          <span className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${liveSim ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+        <div className={`flex items-center justify-between gap-3 overflow-hidden transition-all duration-200 ${scrolled ? 'h-0 opacity-0' : 'h-10 opacity-100 mb-3'}`}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <h1 className="text-2xl font-display font-bold text-gray-900 shrink-0">{ar ? 'الطلبات' : 'Orders'}</h1>
+            {(() => {
+              const af = FILTERS.find(f => f.key === filter)!;
+              const AfIcon = af.Icon;
+              return (
+                <span className="inline-flex items-center gap-1.5 min-w-0 bg-brand-50 text-brand-700 text-[13px] font-bold px-2.5 py-1 rounded-full">
+                  <AfIcon className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">{ar ? af.ar : af.en}</span>
+                </span>
+              );
+            })()}
+          </div>
+          <span className={`shrink-0 flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${liveSim ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
             <span className={`w-2 h-2 rounded-full ${liveSim ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />{ar ? 'مباشر' : 'Live'}
           </span>
         </div>
-        <div className="flex gap-2">
+        {/* Labels dropped (the active one lives in the title pill), so every chip is a
+            uniform icon + count — nothing elastic to truncate. Chips fill the row evenly
+            with a larger icon. */}
+        <div className="flex gap-1.5">
           {FILTERS.map(f => {
-            const on = filter === f;
-            const cnt = active.filter(o => o.status === f).length;
+            const on = filter === f.key;
+            const cnt = f.key === 'SCHEDULED'
+              ? active.filter(isSchedWaiting).length
+              : active.filter(o => o.status === f.key && !isSchedWaiting(o)).length;
+            const Icon = f.Icon;
             return (
-              <button key={f} onClick={() => { setFilter(f); setScrolled(false); }} className={`flex-1 min-w-0 px-1 h-9 rounded-full text-xs font-bold transition-colors flex items-center justify-center gap-1 ${on ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-                <span className="truncate">{ar ? STATUS[f].ar : STATUS[f].en}</span>
-                <span className={on ? 'text-white/70' : 'text-gray-400'}>{cnt}</span>
+              <button key={f.key} onClick={() => { setFilter(f.key); setScrolled(false); }} aria-label={ar ? f.ar : f.en} className={`flex-1 h-11 rounded-xl text-[13px] font-bold transition-colors flex items-center justify-center gap-1.5 ${on ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                <Icon className="w-5 h-5 shrink-0" />
+                <span className={on ? 'text-white' : 'text-gray-400'}>{cnt}</span>
               </button>
             );
           })}
@@ -241,13 +358,16 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
           </button>
         )}
       </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-24" onScroll={e => setScrolled(e.currentTarget.scrollTop > 16)}>
-        {shown.length === 0 ? (
-          <div className="text-center text-gray-400 py-20">
-            <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="font-semibold">{ar ? 'لا توجد طلبات' : 'No orders'}</p>
-          </div>
-        ) : shown.map(o => card(o, true))}
+      <div ref={listRef} className="flex-1 overflow-y-auto p-4" onScroll={e => setScrolled(e.currentTarget.scrollTop > 16)}>
+        <div ref={contentRef} className="space-y-3">
+          {shown.length === 0 ? (
+            <div className="text-center text-gray-400 py-20">
+              <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p className="font-semibold">{ar ? 'لا توجد طلبات' : 'No orders'}</p>
+            </div>
+          ) : shown.map(o => card(o, true))}
+        </div>
+        {padFab && <div className="h-24" aria-hidden />}
       </div>
     </div>
   );
@@ -339,7 +459,45 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
       {right ?? <ChevronLeft className={`w-5 h-5 text-gray-300 ${!ar ? 'rotate-180' : ''}`} />}
     </button>
   );
-  const renderAccount = () => (
+  // language — a full page under Account (unified UX across the three apps)
+  const renderLanguage = () => {
+    const langs: { id: 'ar' | 'en'; avatar: string; native: string; other: string; hint: string }[] = [
+      { id: 'ar', avatar: 'ع', native: 'العربية', other: 'Arabic', hint: 'المملكة العربية السعودية' },
+      { id: 'en', avatar: 'EN', native: 'English', other: 'الإنجليزية', hint: 'English (US)' },
+    ];
+    return (
+      <div className="h-full flex flex-col">
+        <div className="bg-white px-2 pt-4 pb-3 border-b border-gray-100 shrink-0 flex items-center gap-1">
+          <button onClick={() => setLangOpen(false)} aria-label={ar ? 'رجوع' : 'Back'} className="w-10 h-10 rounded-xl hover:bg-gray-100 grid place-items-center text-gray-500 shrink-0"><ChevronLeft className={`w-6 h-6 ${ar ? 'rotate-180' : ''}`} /></button>
+          <h1 className="font-display font-bold text-lg text-gray-900">{ar ? 'اللغة' : 'Language'}</h1>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 overflow-hidden">
+            {langs.map(l => {
+              const on = language === l.id;
+              return (
+                <button key={l.id} onClick={() => setLanguage(l.id)} className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors text-start">
+                  <span className={`w-11 h-11 rounded-full grid place-items-center font-black text-sm shrink-0 ${on ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500'}`} dir="ltr">{l.avatar}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className={`block font-bold ${on ? 'text-brand-700' : 'text-gray-800'}`}>{l.native}</span>
+                    <span className="block text-xs text-gray-400 truncate">{l.other} · {l.hint}</span>
+                  </span>
+                  <span className={`w-6 h-6 rounded-full grid place-items-center shrink-0 border-2 transition-colors ${on ? 'bg-brand-600 border-brand-600' : 'border-gray-300'}`}>
+                    {on && <Check className="w-3.5 h-3.5 text-white" />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-gray-400 mt-4 px-1 leading-relaxed">
+            {ar ? 'يتم تطبيق اللغة على كامل التطبيق مباشرةً، بما في ذلك اتجاه الواجهة.' : 'The language applies to the whole app immediately, including the layout direction.'}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAccount = () => langOpen ? renderLanguage() : (
     <div className="h-full overflow-y-auto pb-6">
       <div className="bg-brand-600 text-white px-4 pt-8 pb-6">
         <div className="flex items-center gap-3">
@@ -366,7 +524,19 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
               <span className={`block w-6 h-6 rounded-full bg-white shadow transition-transform ${sound ? (ar ? '-translate-x-5' : 'translate-x-5') : ''}`} />
             </button>
           </div>
-          {row(Globe, ar ? 'اللغة' : 'Language', <span className="text-sm font-bold text-brand-600">{ar ? 'English' : 'عربي'}</span>, toggleLanguage)}
+          <div className="flex items-center gap-3 px-4 py-3.5">
+            <span className="w-9 h-9 rounded-xl bg-gray-100 grid place-items-center text-gray-500 shrink-0"><Moon className="w-5 h-5" /></span>
+            <span className="flex-1 font-semibold text-gray-800 text-sm">{ar ? 'الوضع الداكن' : 'Dark mode'}</span>
+            <button onClick={() => setAppDark(v => !v)} className={`w-12 h-7 rounded-full p-0.5 transition-colors ${appDark ? 'bg-brand-600' : 'bg-gray-300'}`}>
+              <span className={`block w-6 h-6 rounded-full bg-white shadow transition-transform ${appDark ? (ar ? '-translate-x-5' : 'translate-x-5') : ''}`} />
+            </button>
+          </div>
+          {row(Globe, ar ? 'اللغة' : 'Language', (
+            <>
+              <span className="text-sm font-bold text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-full">{ar ? 'العربية' : 'English'}</span>
+              <ChevronLeft className={`w-5 h-5 text-gray-300 ${!ar ? 'rotate-180' : ''}`} />
+            </>
+          ), () => setLangOpen(true))}
           {row(Store, ar ? 'بيانات الفرع' : 'Branch info')}
           {row(Clock, ar ? 'ساعات العمل' : 'Working hours')}
         </div>
@@ -381,8 +551,13 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
   const renderDetail = (o: Order) => {
     const t = TYPE[o.type], st = STATUS[o.status], p = PAY[o.payment];
     const vat = o.total * 15 / 115;
-    const steps: OStatus[] = o.type === 'DELIVERY' ? ['NEW', 'PREPARING', 'READY', 'ON_WAY', 'DONE'] : ['NEW', 'PREPARING', 'READY', 'DONE'];
-    const curIdx = steps.indexOf(o.status);
+    const waiting = isSchedWaiting(o);
+    const keys: OStatus[] = o.type === 'DELIVERY' ? ['NEW', 'PREPARING', 'READY', 'ON_WAY', 'DONE'] : ['NEW', 'PREPARING', 'READY', 'DONE'];
+    // A scheduled order (accepted, awaiting its time) gets a dedicated «مجدول» step after acceptance.
+    const stepDefs: { ar: string; en: string }[] = waiting
+      ? [{ ar: 'مُستلم', en: 'Accepted' }, { ar: 'مجدول', en: 'Scheduled' }, STATUS.PREPARING, STATUS.READY, ...(o.type === 'DELIVERY' ? [STATUS.ON_WAY] : []), STATUS.DONE]
+      : keys.map(k => STATUS[k]);
+    const curIdx = waiting ? 1 : keys.indexOf(o.status);
     const terminal = o.status === 'DONE' || o.status === 'CANCELLED';
     return (
       <div className="absolute inset-0 z-30 bg-[#FAF7F2] flex flex-col">
@@ -392,10 +567,11 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="font-display font-bold text-lg text-gray-900" dir="ltr">{o.id}</h2>
-              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${st.cls}`}>{ar ? st.ar : st.en}</span>
+              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${waiting ? 'bg-indigo-50 text-indigo-600' : st.cls}`}>{waiting ? (ar ? 'مجدول' : 'Scheduled') : (ar ? st.ar : st.en)}</span>
             </div>
             <p className="text-xs text-gray-400">{ar ? t.ar : t.en} · {ago(o.placedAt)} · {o.source === 'APP' ? (ar ? 'التطبيق' : 'App') : o.source === 'PHONE' ? (ar ? 'هاتفي' : 'Phone') : (ar ? 'الموقع' : 'Web')}</p>
           </div>
+          <button onClick={() => setPrintOrder(o)} aria-label={ar ? 'طباعة' : 'Print'} className="w-10 h-10 rounded-xl hover:bg-gray-100 grid place-items-center text-gray-500 shrink-0"><Printer className="w-5 h-5" /></button>
           <button onClick={() => setMenuOpen(v => !v)} aria-label={ar ? 'خيارات' : 'Options'} className="w-10 h-10 rounded-xl hover:bg-gray-100 grid place-items-center text-gray-500 shrink-0"><MoreVertical className="w-5 h-5" /></button>
           {menuOpen && (
             <>
@@ -427,15 +603,19 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
               <div className="flex items-center gap-2 bg-red-50 text-red-600 rounded-xl px-3 py-2.5 text-sm font-semibold"><X className="w-4 h-4 shrink-0" />{ar ? 'تم إلغاء الطلب' : 'Order cancelled'}{o.rejectReason ? ` · ${o.rejectReason}` : ''}</div>
             ) : (
               <div className="flex items-center">
-                {steps.map((s, i) => (
-                  <React.Fragment key={s}>
-                    <div className="flex flex-col items-center gap-1">
-                      <span className={`w-7 h-7 rounded-full grid place-items-center text-[11px] font-bold ${i <= curIdx ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-400'}`}>{i < curIdx ? <Check className="w-4 h-4" /> : i + 1}</span>
-                      <span className={`text-[9px] font-semibold ${i <= curIdx ? 'text-brand-600' : 'text-gray-400'}`}>{ar ? STATUS[s].ar : STATUS[s].en}</span>
-                    </div>
-                    {i < steps.length - 1 && <div className={`flex-1 h-0.5 mx-1 mb-4 ${i < curIdx ? 'bg-brand-600' : 'bg-gray-200'}`} />}
-                  </React.Fragment>
-                ))}
+                {stepDefs.map((s, i) => {
+                  const isCur = i === curIdx;
+                  const schedStep = waiting && isCur; // the active «مجدول» step
+                  return (
+                    <React.Fragment key={i}>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className={`w-7 h-7 rounded-full grid place-items-center text-[11px] font-bold ${schedStep ? 'bg-indigo-600 text-white' : i <= curIdx ? 'bg-brand-600 text-white' : 'bg-white border border-gray-200 text-gray-400'}`}>{i < curIdx ? <Check className="w-4 h-4" /> : schedStep ? <CalendarClock className="w-4 h-4" /> : i + 1}</span>
+                        <span className={`text-[9px] font-semibold ${schedStep ? 'text-indigo-600' : i <= curIdx ? 'text-brand-600' : 'text-gray-400'}`}>{ar ? s.ar : s.en}</span>
+                      </div>
+                      {i < stepDefs.length - 1 && <div className={`flex-1 h-0.5 mx-1 mb-4 ${i < curIdx ? 'bg-brand-600' : 'bg-gray-200'}`} />}
+                    </React.Fragment>
+                  );
+                })}
               </div>
             )}
 
@@ -444,6 +624,19 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
                 {o.scheduledFor != null
                   ? <><CalendarClock className="w-4 h-4 shrink-0" />{ar ? 'مجدول لـ' : 'Scheduled for'} {clock(o.scheduledFor)}</>
                   : <><Timer className="w-4 h-4 shrink-0" />{ar ? `جاهز خلال ~${o.prepMin} دقيقة` : `Ready in ~${o.prepMin} min`}</>}
+              </div>
+            )}
+
+            {/* scheduled slot + reminder lead */}
+            {o.scheduledFor != null && !terminal && (
+              <div className="flex items-center gap-3 bg-indigo-50 rounded-2xl p-3.5">
+                <span className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 grid place-items-center shrink-0"><CalendarClock className="w-5 h-5" /></span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-indigo-700">{ar ? 'طلب مجدول' : 'Scheduled order'} · {clock(o.scheduledFor)}</p>
+                  <p className="text-xs text-indigo-500">{o.notifyBefore != null
+                    ? (ar ? `تنبيه قبل ${o.notifyBefore} دقيقة من الموعد` : `Reminder ${o.notifyBefore} min before`)
+                    : (ar ? 'بانتظار القبول' : 'Awaiting acceptance')}</p>
+                </div>
               </div>
             )}
 
@@ -476,7 +669,7 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
                     <p className="text-sm font-bold text-gray-900 truncate">{o.driver || (ar ? 'لم يُعيّن سائق' : 'No driver yet')}</p>
                     <p className="text-xs text-gray-400">{ar ? 'الوقت المقدّر ٢٥–٣٥ دقيقة' : 'ETA 25–35 min'}</p>
                   </div>
-                  {!terminal && <button onClick={() => setPickDriver(o)} className="text-sm font-bold text-brand-600 px-3 py-1.5 rounded-lg hover:bg-brand-50 shrink-0">{o.driver ? (ar ? 'تغيير السائق' : 'Change driver') : (ar ? 'تعيين سائق' : 'Assign driver')}</button>}
+                  {o.driver && !terminal && <button onClick={() => setPickDriver({ o, advance: false })} className="text-sm font-bold text-brand-600 px-3 py-1.5 rounded-lg hover:bg-brand-50 shrink-0">{ar ? 'تغيير السائق' : 'Change driver'}</button>}
                 </div>
               </div>
             )}
@@ -524,11 +717,15 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
             <div className="p-4 border-t border-gray-100 shrink-0 flex gap-2">
               {o.status === 'NEW' ? (
                 <>
-                  <button onClick={() => { reject(o); setSelectedId(null); }} className="px-5 py-3.5 rounded-2xl bg-gray-100 text-gray-600 font-bold hover:bg-gray-200">{ar ? 'رفض' : 'Reject'}</button>
+                  <button onClick={() => { reject(o); setSelectedId(null); }} className="px-5 py-3.5 rounded-2xl bg-white border border-gray-200 text-gray-600 font-bold hover:bg-gray-50">{ar ? 'رفض' : 'Reject'}</button>
                   <button onClick={() => accept(o)} className="flex-1 py-3.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold flex items-center justify-center gap-2"><Check className="w-5 h-5" />{ar ? 'قبول الطلب' : 'Accept order'}</button>
                 </>
+              ) : isSchedWaiting(o) ? (
+                <button onClick={() => requestStartNow(o)} className="flex-1 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center justify-center gap-2"><CalendarClock className="w-5 h-5" />{ar ? 'بدء التحضير الآن' : 'Start prep now'}</button>
+              ) : o.status === 'ON_WAY' ? (
+                <div className="flex-1 py-3.5 rounded-2xl bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center gap-2"><Bike className="w-5 h-5" />{ar ? 'مع السائق — بانتظار التسليم' : 'With the driver — awaiting delivery'}</div>
               ) : (
-                <button onClick={() => advance(o)} className="flex-1 py-3.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold flex items-center justify-center gap-2">{o.type === 'DELIVERY' && o.status === 'READY' ? <Navigation className="w-5 h-5" /> : <Check className="w-5 h-5" />}{actionLabel(o)}</button>
+                <button onClick={() => requestAdvance(o)} className="flex-1 py-3.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold flex items-center justify-center gap-2">{o.type === 'DELIVERY' && o.status === 'READY' ? <Navigation className="w-5 h-5" /> : <Check className="w-5 h-5" />}{actionLabel(o)}</button>
               )}
             </div>
           )}
@@ -544,7 +741,7 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
   ];
 
   return (
-    <div dir={dir} className="h-screen bg-[#FAF7F2] flex justify-center font-sans text-ink">
+    <div dir={dir} className={`h-screen bg-[#FAF7F2] flex justify-center font-sans text-ink ${appDark ? 'dark' : ''}`}>
       <div className="w-full max-w-md h-screen flex flex-col relative bg-[#FAF7F2] shadow-2xl overflow-hidden">
         <div className="flex-1 overflow-hidden">
           {tab === 'orders' && renderOrders()}
@@ -563,7 +760,7 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
           {NAV.map(n => {
             const on = tab === n.id;
             return (
-              <button key={n.id} onClick={() => setTab(n.id)} className={`relative flex flex-col items-center gap-1 py-2.5 transition-colors ${on ? 'text-brand-600' : 'text-gray-400'}`}>
+              <button key={n.id} onClick={() => { if (n.id === 'account') setLangOpen(false); setTab(n.id); }} className={`relative flex flex-col items-center gap-1 py-2.5 transition-colors ${on ? 'text-brand-600' : 'text-gray-400'}`}>
                 <n.Icon className="w-6 h-6" />
                 <span className="text-[11px] font-bold">{ar ? n.ar : n.en}</span>
                 {n.id === 'orders' && newCount > 0 && <span className="absolute top-1.5 ms-5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold grid place-items-center">{newCount}</span>}
@@ -574,10 +771,39 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
 
         {selected && renderDetail(selected)}
 
-        {creating && <NewOrder ar={ar} dir={dir} onCancel={() => setCreating(false)} onCreate={submitOrder} />}
+        {creating && <NewOrder ar={ar} dir={dir} onCancel={() => setCreating(false)} onCreate={submitOrder} registerBack={h => { newOrderBack.current = h; }} />}
 
-        {/* accept → prep time (centered popup) */}
-        {accepting && (
+        {/* print → choose receipt destination */}
+        {printOrder && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center p-4" onClick={() => setPrintOrder(null)}>
+            <div className="absolute inset-0 bg-ink/50 backdrop-blur-sm" />
+            <div className="relative bg-white rounded-3xl w-full max-w-xs p-5" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-1.5">
+                <h2 className="font-display font-bold text-xl text-gray-900 flex items-center gap-2"><Printer className="w-5 h-5 text-brand-600" />{ar ? 'طباعة' : 'Print'} <span dir="ltr" className="text-gray-400 font-medium text-base">{printOrder.id}</span></h2>
+                <button onClick={() => setPrintOrder(null)} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center text-gray-500 hover:bg-gray-200"><X className="w-5 h-5" /></button>
+              </div>
+              <p className="text-sm text-gray-500 mb-4">{ar ? 'اختر نوع الإيصال المطلوب طباعته.' : 'Choose which ticket to print.'}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => printTicket('client')} className="flex flex-col items-center gap-2 py-5 rounded-2xl border-2 border-gray-200 hover:border-brand-600 hover:bg-brand-50 active:scale-95 transition-all">
+                  <span className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 grid place-items-center"><Receipt className="w-6 h-6" /></span>
+                  <span className="font-bold text-sm text-gray-900">{ar ? 'فاتورة العميل' : 'Customer'}</span>
+                  <span className="text-[11px] text-gray-400">{ar ? 'إيصال ضريبي' : 'Tax invoice'}</span>
+                </button>
+                <button onClick={() => printTicket('kitchen')} className="flex flex-col items-center gap-2 py-5 rounded-2xl border-2 border-gray-200 hover:border-brand-600 hover:bg-brand-50 active:scale-95 transition-all">
+                  <span className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 grid place-items-center"><ChefHat className="w-6 h-6" /></span>
+                  <span className="font-bold text-sm text-gray-900">{ar ? 'تذكرة المطبخ' : 'Kitchen'}</span>
+                  <span className="text-[11px] text-gray-400">{ar ? 'قائمة التحضير' : 'Prep list'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* accept → prep time, or (for scheduled) notify-before lead (centered popup) */}
+        {accepting && (() => {
+          const sched = accepting.scheduledFor != null;
+          const opts = sched ? [10, 15, 30, 60] : [15, 20, 30, 45];
+          return (
           <div className="absolute inset-0 z-40 flex items-center justify-center p-4" onClick={() => setAccepting(null)}>
             <div className="absolute inset-0 bg-ink/50 backdrop-blur-sm" />
             <div className="relative bg-white rounded-3xl w-full max-w-xs p-5" onClick={e => e.stopPropagation()}>
@@ -585,17 +811,52 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
                 <h2 className="font-display font-bold text-xl text-gray-900">{ar ? 'قبول الطلب' : 'Accept'} <span dir="ltr">{accepting.id}</span></h2>
                 <button onClick={() => setAccepting(null)} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center text-gray-500 hover:bg-gray-200"><X className="w-5 h-5" /></button>
               </div>
-              <p className="text-sm text-gray-500 mb-4">{ar ? 'كم يحتاج التحضير؟ سيُبلَّغ العميل بالوقت.' : 'How long to prepare? The customer is notified.'}</p>
+              {sched ? (
+                <>
+                  <div className="flex items-center gap-2 bg-indigo-50 text-indigo-700 rounded-xl px-3 py-2 mb-3 text-sm font-bold"><CalendarClock className="w-4 h-4 shrink-0" />{ar ? 'موعد الطلب' : 'Scheduled for'} · {clock(accepting.scheduledFor!)}</div>
+                  <p className="text-sm text-gray-500 mb-4">{ar ? 'قبل كم دقيقة تريد التنبيه لبدء التحضير؟' : 'How long before the slot should we remind you?'}</p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500 mb-4">{ar ? 'كم يحتاج التحضير؟ سيُبلَّغ العميل بالوقت.' : 'How long to prepare? The customer is notified.'}</p>
+              )}
               <div className="grid grid-cols-2 gap-2.5">
-                {[15, 20, 30, 45].map(m => (
+                {opts.map(m => (
                   <button key={m} onClick={() => confirmAccept(accepting, m)} className="py-5 rounded-2xl bg-gray-50 border-2 border-gray-200 hover:border-brand-600 hover:bg-brand-50 active:scale-95 transition-all">
-                    <span className="block font-display font-bold text-2xl text-gray-900">{m}</span><span className="block text-[11px] text-gray-400 font-semibold mt-0.5">{ar ? 'دقيقة' : 'min'}</span>
+                    <span className="block font-display font-bold text-2xl text-gray-900">{m}</span><span className="block text-[11px] text-gray-400 font-semibold mt-0.5">{sched ? (ar ? 'دقيقة قبل الموعد' : 'min before') : (ar ? 'دقيقة' : 'min')}</span>
                   </button>
                 ))}
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
+
+        {/* confirm any non-NEW state change */}
+        {confirming && (() => {
+          const { o, kind } = confirming;
+          const ns = nextStatus(o);
+          const isStart = kind === 'startNow';
+          const label = isStart ? (ar ? 'بدء التحضير' : 'Start prep') : actionLabel(o);
+          const title = isStart ? (ar ? 'بدء التحضير الآن' : 'Start prep now') : (ar ? 'تأكيد الحالة' : 'Confirm status');
+          const body = isStart
+            ? (ar ? `سيبدأ تحضير ${o.id} فوراً ويخرج من قائمة المجدولة.` : `${o.id} starts preparing now and leaves the scheduled list.`)
+            : (ns ? (ar ? `سيتم نقل ${o.id} إلى «${STATUS[ns].ar}».` : `Move ${o.id} to "${STATUS[ns].en}".`) : '');
+          const Icon = isStart ? CalendarClock : (o.type === 'DELIVERY' && o.status === 'READY' ? Navigation : Check);
+          return (
+            <div className="absolute inset-0 z-40 flex items-center justify-center p-4" onClick={() => setConfirming(null)}>
+              <div className="absolute inset-0 bg-ink/50 backdrop-blur-sm" />
+              <div className="relative bg-white rounded-3xl w-full max-w-xs p-5 text-center" onClick={e => e.stopPropagation()}>
+                <span className={`w-16 h-16 rounded-full grid place-items-center mx-auto mb-3 ${isStart ? 'bg-indigo-50 text-indigo-600' : 'bg-brand-50 text-brand-600'}`}><Icon className="w-8 h-8" /></span>
+                <h2 className="font-display font-bold text-xl text-gray-900 mb-1">{title}</h2>
+                <p className="text-sm text-gray-500 mb-4">{body}</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setConfirming(null)} className="px-5 py-3 rounded-2xl bg-gray-100 text-gray-600 font-bold hover:bg-gray-200">{ar ? 'تراجع' : 'Back'}</button>
+                  <button onClick={runConfirm} className={`flex-1 py-3 rounded-2xl text-white font-bold flex items-center justify-center gap-2 ${isStart ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-brand-600 hover:bg-brand-700'}`}><Icon className="w-5 h-5" />{label}</button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* reject → reason (centered popup) */}
         {rejecting && (
@@ -620,16 +881,19 @@ const OrdersApp: React.FC<Props> = ({ onBackToPortal }) => {
           <div className="absolute inset-0 z-40 flex items-center justify-center p-4" onClick={() => setPickDriver(null)}>
             <div className="absolute inset-0 bg-ink/50 backdrop-blur-sm" />
             <div className="relative bg-white rounded-3xl w-full max-w-sm max-h-[80%] flex flex-col" onClick={e => e.stopPropagation()}>
-              <div className="p-5 pb-3 flex items-center justify-between shrink-0">
-                <h2 className="font-display font-bold text-xl text-gray-900">{ar ? 'اختر السائق' : 'Choose driver'}</h2>
+              <div className="p-5 pb-3 flex items-start justify-between shrink-0">
+                <div>
+                  <h2 className="font-display font-bold text-xl text-gray-900">{ar ? 'اختر السائق' : 'Choose driver'}</h2>
+                  {pickDriver.advance && <p className="text-xs text-gray-400 mt-0.5">{ar ? 'سيخرج الطلب للتوصيل فور الاختيار' : 'The order dispatches once you pick'}</p>}
+                </div>
                 <button onClick={() => setPickDriver(null)} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center text-gray-500 hover:bg-gray-200"><X className="w-5 h-5" /></button>
               </div>
               <div className="px-5 pb-5 overflow-y-auto space-y-2">
                 {SORTED_DRIVERS.map(d => {
-                  const selected = pickDriver.driver === d.name;
+                  const selected = pickDriver.o.driver === d.name;
                   const recommended = d.name === REC_DRIVER.name;
                   return (
-                    <button key={d.name} onClick={() => setDriver(pickDriver, d.name)} className={`w-full flex items-center gap-3 p-2.5 rounded-2xl border-2 text-start transition-colors ${selected ? 'border-brand-600 bg-brand-50' : 'border-gray-100 hover:border-gray-200'}`}>
+                    <button key={d.name} onClick={() => chooseDriver(d.name)} className={`w-full flex items-center gap-3 p-2.5 rounded-2xl border-2 text-start transition-colors ${selected ? 'border-brand-600 bg-brand-50' : 'border-gray-100 hover:border-gray-200'}`}>
                       <span className="relative w-11 h-11 rounded-full bg-gray-100 text-gray-600 grid place-items-center font-bold shrink-0">
                         {inits(d.name)}
                         <span className={`absolute -bottom-0.5 -end-0.5 w-3.5 h-3.5 rounded-full ring-2 ring-white ${d.status === 'available' ? 'bg-green-500' : 'bg-amber-500'}`} />

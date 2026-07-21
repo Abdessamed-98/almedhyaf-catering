@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, ArrowLeft, LayoutTemplate, Calculator } from 'lucide-react';
+import { Globe, ArrowLeft, LayoutTemplate, Calculator, ClipboardList, Bike } from 'lucide-react';
 import Logo from '../../components/Logo';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -7,9 +7,11 @@ interface PortalProps {
   onNavigateToWebsite: () => void;
   onNavigateToOrdering?: () => void;
   onNavigateToPOS?: () => void;
+  onNavigateToOrders?: () => void;
+  onNavigateToDelivery?: () => void;
 }
 
-const Portal: React.FC<PortalProps> = ({ onNavigateToWebsite, onNavigateToOrdering, onNavigateToPOS }) => {
+const Portal: React.FC<PortalProps> = ({ onNavigateToWebsite, onNavigateToOrdering, onNavigateToPOS, onNavigateToOrders, onNavigateToDelivery }) => {
   const { t, toggleLanguage, language } = useLanguage();
 
   // Portal surfaces the company website + the Ordering app.
@@ -34,8 +36,20 @@ const Portal: React.FC<PortalProps> = ({ onNavigateToWebsite, onNavigateToOrderi
       subtitle: language === 'ar' ? 'الكاشير' : 'Cashier',
       icon: <Calculator className="w-7 h-7" />,
       tile: 'bg-ink text-white',
-      action: onNavigateToPOS || (() => alert(t('loading_redirect'))),
-    },
+      action: onNavigateToPOS || (() => alert(t('loading_redirect'))),    },
+    {
+      title: language === 'ar' ? 'إدارة الطلبات' : 'Order Management',
+      subtitle: language === 'ar' ? 'تتبّع طلبات التطبيق' : 'Track app orders',
+      icon: <ClipboardList className="w-7 h-7" />,
+      tile: 'bg-secondary-500 text-ink',
+      action: onNavigateToOrders || (() => alert(t('loading_redirect'))),    },
+    {
+      title: language === 'ar' ? 'تطبيق المندوب' : 'Delivery Driver',
+      subtitle: language === 'ar' ? 'استلام وتوصيل الطلبات' : 'Pick up & deliver',
+      icon: <Bike className="w-7 h-7" />,
+      tile: 'bg-ink text-white',
+      action: onNavigateToDelivery || (() => alert(t('loading_redirect'))),    },
+  // All apps are shown (incl. POS, Order Management, Delivery) so the client can preview the full suite.
   ];
 
   return (

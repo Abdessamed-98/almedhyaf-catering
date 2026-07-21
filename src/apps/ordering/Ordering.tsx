@@ -7,9 +7,10 @@ import {
   Package, CheckCircle, RefreshCw, AlertCircle, UtensilsCrossed, ChevronDown,
   Trash2, Edit2, Bell, Shield, LogOut, Check, Globe, HelpCircle, FileText,
   Save, Loader, Wallet, Calendar, TicketPercent, Crosshair, Gift,
-  LayoutGrid, List
+  LayoutGrid, List, SlidersHorizontal, Camera, CheckCircle2, Moon, Sun
 } from 'lucide-react';
 import { Utensils as IcMenu, Heart as IcHeart, Bag as IcBag, Clipboard as IcOrders, User as IcUser, Phone as IcPhone, Whatsapp as IcWhatsapp, Email as IcEmail } from '../../components/icons';
+import { useHardwareBack } from '../../hooks/useHardwareBack';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { OrderType, Product, CartItem, Branch } from '../../types';
 import Logo from '../../components/Logo';
@@ -48,9 +49,9 @@ const GRILL_SIDES = { id: 5, name: 'الإضافات الجانبية', min: 0, 
 
 const MOCK_PRODUCTS: Product[] = [
   // ── كبسة ومندي ──────────────────────────────
-  { id: 1, name: 'كبسة لحم نعيمي', description: 'لحم نعيمي بلدي طازج على رز بشاور فاخر ومكسرات محمّصة', price: 65, category: 'كبسة ومندي', calories: 1200, image: 'dishes/main-1.jpg', modifiers: [RICE_CHOICE, PORTION, TOPPINGS] },
+  { id: 1, name: 'كبسة لحم نعيمي', popular: true, description: 'لحم نعيمي بلدي طازج على رز بشاور فاخر ومكسرات محمّصة', price: 65, category: 'كبسة ومندي', calories: 1200, image: 'dishes/main-1.jpg', modifiers: [RICE_CHOICE, PORTION, TOPPINGS] },
   { id: 2, name: 'كبسة دجاج', description: 'دجاج محمّر بالبهارات السعودية على رز متبّل', price: 38, category: 'كبسة ومندي', calories: 950, image: 'dishes/main-5.jpg', modifiers: [RICE_CHOICE, PORTION, TOPPINGS] },
-  { id: 3, name: 'مندي لحم', description: 'لحم مدخّن في التنّور حتى الطراوة على أرز مندي معطّر', price: 72, category: 'كبسة ومندي', calories: 1250, image: 'dishes/main-4.jpg', modifiers: [PORTION, TOPPINGS] },
+  { id: 3, name: 'مندي لحم', popular: true, description: 'لحم مدخّن في التنّور حتى الطراوة على أرز مندي معطّر', price: 72, category: 'كبسة ومندي', calories: 1250, image: 'dishes/main-4.jpg', modifiers: [PORTION, TOPPINGS] },
   { id: 4, name: 'مندي دجاج', description: 'ربع دجاج مدخّن بنكهة الفحم الأصيلة على أرز مندي', price: 40, category: 'كبسة ومندي', calories: 900, image: 'dishes/main-6.jpg', modifiers: [PORTION, TOPPINGS] },
   { id: 5, name: 'أرز بخاري باللحم', description: 'أرز بخاري بالجزر والزبيب يُقدّم مع قطع اللحم', price: 60, category: 'كبسة ومندي', calories: 1100, image: 'dishes/main-6.jpg', modifiers: [PORTION, TOPPINGS] },
   { id: 6, name: 'برياني دجاج', description: 'أرز هندي بالبهارات الحارّة مع الدجاج الطري', price: 42, category: 'كبسة ومندي', calories: 980, image: 'dishes/main-2.jpg', modifiers: [SPICE, PORTION] },
@@ -59,7 +60,7 @@ const MOCK_PRODUCTS: Product[] = [
 
   // ── مشويات ──────────────────────────────────
   { id: 9, name: 'مشاوي مشكّلة', description: 'تشكيلة كباب وتكة وأوصال مشوية على الفحم', price: 88, category: 'مشويات', calories: 1150, image: 'dishes/grill-2.jpg', modifiers: [SPICE, GRILL_SIDES] },
-  { id: 10, name: 'شيش طاووق', description: 'قطع دجاج متبّلة مشوية على الأسياخ', price: 36, category: 'مشويات', calories: 700, image: 'dishes/grill-1.jpg', modifiers: [GRILL_SIDES] },
+  { id: 10, name: 'شيش طاووق', popular: true, description: 'قطع دجاج متبّلة مشوية على الأسياخ', price: 36, category: 'مشويات', calories: 700, image: 'dishes/grill-1.jpg', modifiers: [GRILL_SIDES] },
   { id: 11, name: 'كباب لحم', description: 'لحم مفروم متبّل بالبهارات والأعشاب مشوي على الفحم', price: 48, category: 'مشويات', calories: 820, image: 'dishes/grill-3.jpg', modifiers: [SPICE, GRILL_SIDES] },
   { id: 12, name: 'أرياش لحم', description: 'ريش خروف مشوية على الفحم بتتبيلة خاصة', price: 95, category: 'مشويات', calories: 900, image: 'dishes/grill-4.jpg', modifiers: [GRILL_SIDES] },
   { id: 13, name: 'تكة دجاج', description: 'مكعبات دجاج متبّلة بالزعفران واللبن', price: 34, category: 'مشويات', calories: 680, image: 'dishes/grill-1.jpg', modifiers: [GRILL_SIDES] },
@@ -67,14 +68,14 @@ const MOCK_PRODUCTS: Product[] = [
   // ── شعبيات ──────────────────────────────────
   { id: 14, name: 'جريش أحمر', description: 'جريش قصيمي مطبوخ باللبن واللحم على نار هادئة', price: 28, category: 'شعبيات', calories: 520, image: 'dishes/main-6.jpg' },
   { id: 15, name: 'مرقوق باللحم', description: 'عجين رقيق مع مرق اللحم والخضار', price: 30, category: 'شعبيات', calories: 600, image: 'dishes/main-4.jpg' },
-  { id: 16, name: 'قرصان', description: 'رقائق عجين بمرق الدجاج والخضار', price: 26, category: 'شعبيات', calories: 560, image: 'dishes/main-2.jpg' },
+  { id: 16, name: 'قرصان', popular: true, description: 'رقائق عجين بمرق الدجاج والخضار', price: 26, category: 'شعبيات', calories: 560, image: 'dishes/main-2.jpg' },
   { id: 17, name: 'صالونة لحم', description: 'يخنة لحم وخضار بالبهارات الخليجية', price: 32, category: 'شعبيات', calories: 540, image: 'dishes/main-5.jpg' },
   { id: 18, name: 'مطازيز', description: 'كبيبات عجين مع مرق اللحم الغني', price: 29, category: 'شعبيات', calories: 580, image: 'dishes/main-1.jpg' },
 
   // ── مقبلات وسلطات ───────────────────────────
   { id: 19, name: 'حمص بالطحينة', description: 'معجون الحمّص بزيت الزيتون والكمون', price: 14, category: 'مقبلات', calories: 220, image: 'dishes/mezze-1.jpg' },
   { id: 20, name: 'متبّل باذنجان', description: 'باذنجان مدخّن مهروس بالطحينة', price: 14, category: 'مقبلات', calories: 200, image: 'dishes/mezze-1.jpg' },
-  { id: 21, name: 'تبّولة', description: 'بقدونس وبرغل وطماطم بزيت الزيتون والليمون', price: 16, category: 'مقبلات', calories: 180, image: 'dishes/mezze-2.jpg' },
+  { id: 21, name: 'تبّولة', popular: true, description: 'بقدونس وبرغل وطماطم بزيت الزيتون والليمون', price: 16, category: 'مقبلات', calories: 180, image: 'dishes/mezze-2.jpg' },
   { id: 22, name: 'فتّوش', description: 'خضار طازجة مع خبز محمّص ودبس الرمان', price: 16, category: 'مقبلات', calories: 210, image: 'dishes/mezze-2.jpg' },
   { id: 23, name: 'سمبوسك لحم', description: 'معجّنات مقرمشة محشوة باللحم المتبّل (٦ حبات)', price: 18, category: 'مقبلات', calories: 360, image: 'dishes/samosa-1.jpg' },
   { id: 24, name: 'ورق عنب', description: 'محشي بالأرز والبهارات والأعشاب', price: 20, category: 'مقبلات', calories: 300, image: 'dishes/dolma-1.jpg' },
@@ -82,14 +83,14 @@ const MOCK_PRODUCTS: Product[] = [
 
   // ── حلويات ──────────────────────────────────
   { id: 26, name: 'لقيمات', description: 'كرات مقرمشة بالعسل والسمسم (١٢ حبة)', price: 18, category: 'حلويات', calories: 420, image: 'dishes/luqaimat-1.jpg' },
-  { id: 27, name: 'كنافة', description: 'عجينة وجبن وقطر بماء الورد', price: 22, category: 'حلويات', calories: 480, image: 'dishes/kunafa-1.jpg' },
+  { id: 27, name: 'كنافة', popular: true, description: 'عجينة وجبن وقطر بماء الورد', price: 22, category: 'حلويات', calories: 480, image: 'dishes/kunafa-1.jpg' },
   { id: 28, name: 'بقلاوة', description: 'طبقات رقيقة بالفستق والعسل (٦ قطع)', price: 24, category: 'حلويات', calories: 450, image: 'dishes/sweet-1.jpg' },
   { id: 29, name: 'أم علي', description: 'حلى دافئ بالحليب والمكسرات', price: 20, category: 'حلويات', calories: 400, image: 'dishes/sweet-2.jpg' },
 
   // ── مشروبات ─────────────────────────────────
   { id: 30, name: 'قهوة عربية وتمر', description: 'ضيافة أصيلة لاستقبال الضيوف (دلّة + تمر)', price: 18, category: 'مشروبات', calories: 60, image: 'dishes/drink-1.jpg' },
   { id: 31, name: 'شاي بالنعناع', description: 'شاي ساخن بالنعناع الطازج', price: 8, category: 'مشروبات', calories: 40, image: 'dishes/tea-1.jpg' },
-  { id: 32, name: 'عصير برتقال طازج', description: 'برتقال معصور طازج بدون سكر مضاف', price: 14, category: 'مشروبات', calories: 110, image: 'dishes/juice-1.jpg' },
+  { id: 32, name: 'عصير برتقال طازج', popular: true, description: 'برتقال معصور طازج بدون سكر مضاف', price: 14, category: 'مشروبات', calories: 110, image: 'dishes/juice-1.jpg' },
   { id: 33, name: 'لبن وعيران', description: 'مشروب لبن منعش يقدّم بارداً', price: 7, category: 'مشروبات', calories: 90, image: 'dishes/laban-1.jpg' },
 ];
 
@@ -107,6 +108,9 @@ interface MockOrder {
     items: { name: string; quantity: number; price: number }[];
     type: OrderType;
     payment: 'CASH' | 'CARD' | 'APPLE';
+    driver?: string;
+    proofPhoto?: string; // delivery handoff photo (set once the order is delivered)
+    deliveredAt?: string;
 }
 
 const INITIAL_ORDERS: MockOrder[] = [
@@ -135,7 +139,9 @@ const INITIAL_ORDERS: MockOrder[] = [
         total: 210,
         items: [{ name: 'بوكس الجمعات', quantity: 1, price: 210 }],
         type: 'DELIVERY',
-        payment: 'CASH'
+        payment: 'CASH',
+        proofPhoto: 'concept/07.jpg',
+        deliveredAt: '2023-11-10 13:42'
     },
      {
         id: '#ORD-9100',
@@ -184,6 +190,11 @@ const ProductCard: React.FC<CardProps> = ({ product, view, fav, onFav, onSelect,
       <div onClick={onSelect} className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-2.5 cursor-pointer hover:shadow-md transition-shadow">
         <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-gray-100 shrink-0">
           <img src={product.image} loading="lazy" className="w-full h-full object-cover" alt={product.name} />
+          {product.popular && (
+            <span className="absolute top-1 start-1 inline-flex items-center gap-0.5 bg-secondary-500 text-ink text-[9px] font-black px-1.5 py-0.5 rounded-full shadow">
+              <Star className="w-2.5 h-2.5 fill-current" />{t('ord_popular')}
+            </span>
+          )}
         </div>
         <div className="flex-1 min-w-0 self-stretch flex flex-col py-0.5">
           <div className="flex items-start justify-between gap-2">
@@ -193,9 +204,12 @@ const ProductCard: React.FC<CardProps> = ({ product, view, fav, onFav, onSelect,
             </button>
           </div>
           <p className="text-xs text-gray-500 line-clamp-2 mt-1 flex-1">{product.description}</p>
-          <div className="flex items-center justify-between mt-2">
-            <span className="font-black text-brand-700 text-lg">{product.price} <span className="text-xs font-bold text-gray-400">{t('ord_sar')}</span></span>
-            <button onClick={(e) => { e.stopPropagation(); onSelect(); }} aria-label={t('ord_add')} className="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700 active:scale-95 shadow-md shadow-brand-900/20 transition-all">
+          <div className="flex items-center justify-between gap-2 mt-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-black text-brand-700 text-lg">{product.price} <span className="text-xs font-bold text-gray-400">{t('ord_sar')}</span></span>
+              {product.calories ? <span className="text-[11px] font-normal text-gray-400 inline-flex items-center gap-1 whitespace-nowrap"><Flame className="w-3 h-3 text-secondary-500" />{product.calories} {t('ord_calories')}</span> : null}
+            </div>
+            <button onClick={(e) => { e.stopPropagation(); onSelect(); }} aria-label={t('ord_add')} className="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700 active:scale-95 shadow-md shadow-brand-900/20 transition-all shrink-0">
               <Plus className="w-5 h-5" />
             </button>
           </div>
@@ -207,21 +221,24 @@ const ProductCard: React.FC<CardProps> = ({ product, view, fav, onFav, onSelect,
     <div onClick={onSelect} className="group bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md cursor-pointer relative flex flex-col">
       <div className="relative h-40 overflow-hidden bg-gray-100">
         <img src={product.image} loading="lazy" className="w-full h-full object-cover" alt={product.name} />
-        <button onClick={(e) => { e.stopPropagation(); onFav(); }} aria-label={t('ord_favorites')} className={`absolute top-2.5 end-2.5 p-1.5 rounded-full backdrop-blur-sm transition-colors ${fav ? 'text-brand-600 bg-white' : 'text-white bg-black/25 hover:bg-black/40'}`}>
+        {product.popular && (
+          <span className="absolute top-2.5 start-2.5 inline-flex items-center gap-1 bg-secondary-500 text-ink text-[10px] font-black px-2 py-0.5 rounded-full shadow">
+            <Star className="w-3 h-3 fill-current" />{t('ord_popular')}
+          </span>
+        )}
+        <button onClick={(e) => { e.stopPropagation(); onFav(); }} aria-label={t('ord_favorites')} className={`absolute top-2.5 end-2.5 p-1.5 rounded-full transition-colors ${fav ? 'text-brand-600 bg-white' : 'text-white bg-black/30 hover:bg-black/45'}`}>
           <Heart className={`w-4 h-4 ${fav ? 'fill-current' : ''}`} />
         </button>
-        {product.calories ? (
-          <span className="absolute bottom-2 start-2 flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-            <Flame className="w-3 h-3 text-secondary-400" /> {product.calories} {t('ord_calories')}
-          </span>
-        ) : null}
       </div>
       <div className="p-3 flex flex-col flex-1">
         <h3 className="font-bold text-gray-900 text-sm leading-snug line-clamp-1">{product.name}</h3>
         <p className="text-xs text-gray-500 line-clamp-2 mt-1 mb-3 flex-1">{product.description}</p>
-        <div className="flex items-center justify-between">
-          <span className="font-black text-brand-700 text-lg">{product.price} <span className="text-xs font-bold text-gray-400">{t('ord_sar')}</span></span>
-          <button onClick={(e) => { e.stopPropagation(); onSelect(); }} aria-label={t('ord_add')} className="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700 active:scale-95 shadow-md shadow-brand-900/20 transition-all">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-black text-brand-700 text-lg">{product.price} <span className="text-xs font-bold text-gray-400">{t('ord_sar')}</span></span>
+            {product.calories ? <span className="text-[11px] font-normal text-gray-400 inline-flex items-center gap-1 whitespace-nowrap"><Flame className="w-3 h-3 text-secondary-500" />{product.calories} {t('ord_calories')}</span> : null}
+          </div>
+          <button onClick={(e) => { e.stopPropagation(); onSelect(); }} aria-label={t('ord_add')} className="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700 active:scale-95 shadow-md shadow-brand-900/20 transition-all shrink-0">
             <Plus className="w-5 h-5" />
           </button>
         </div>
@@ -231,42 +248,48 @@ const ProductCard: React.FC<CardProps> = ({ product, view, fav, onFav, onSelect,
 };
 
 // ── Menu — one continuous list grouped by category (with scrollspy anchors) ──
+// Static promo banners (2:1, artwork baked in — no code overlay/text).
+const BANNER_IMAGES = ['banners/ordering/banner-1.webp', 'banners/ordering/banner-2.webp', 'banners/ordering/banner-3.webp', 'banners/ordering/banner-4.webp', 'banners/ordering/banner-5.webp'];
+
 interface MenuScreenProps {
   t: (k: string) => string;
   language: string;
   searchQuery: string;
   menuView: 'grid' | 'list';
+  sort: 'default' | 'popular' | 'price_hi' | 'price_lo';
   favorites: number[];
   toggleFavorite: (id: number) => void;
   onSelect: (p: Product) => void;
 }
-const MenuScreen: React.FC<MenuScreenProps> = ({ t, language, searchQuery, menuView, favorites, toggleFavorite, onSelect }) => {
-  const BANNERS = [
-    { id: 1, title: language === 'ar' ? 'عرض الغداء' : 'Lunch Offer', subtitle: language === 'ar' ? 'خصم 20% على جميع الكبسات' : '20% OFF on all Kabsa', image: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=800' },
-    { id: 2, title: language === 'ar' ? 'توصيل مجاني' : 'Free Delivery', subtitle: language === 'ar' ? 'للطلبات فوق 100 ريال' : 'Orders above 100 SAR', image: 'https://images.unsplash.com/photo-1590556409324-aa1d726e5c3c?q=80&w=800&auto=format&fit=crop' },
-    { id: 3, title: language === 'ar' ? 'جديدنا' : 'New Item', subtitle: language === 'ar' ? 'جرب الجريش الأحمر' : 'Try Red Jareesh', image: 'https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&q=80&w=800' },
-  ];
+const MenuScreen: React.FC<MenuScreenProps> = ({ t, language, searchQuery, menuView, sort, favorites, toggleFavorite, onSelect }) => {
   const q = searchQuery.trim();
-  const CATS = Array.from(new Set(MOCK_PRODUCTS.map(p => p.category)));
-  const groups = CATS
-    .map(cat => ({ cat, items: MOCK_PRODUCTS.filter(p => p.category === cat && (!q || p.name.includes(q) || p.description.includes(q))) }))
-    .filter(g => g.items.length > 0);
+  const ar = language === 'ar';
+  const POPULAR = ar ? '🔥 الأكثر طلباً' : '🔥 Most ordered';
+  const matchQ = (p: Product) => !q || p.name.includes(q) || p.description.includes(q);
+  // Sort items *within* each category so the category nav/scrollspy stays intact.
+  const sortItems = (items: Product[]) => {
+    const arr = [...items];
+    if (sort === 'price_hi') arr.sort((a, b) => b.price - a.price);
+    else if (sort === 'price_lo') arr.sort((a, b) => a.price - b.price);
+    return arr;
+  };
+  // «الأكثر طلباً» is a synthetic first category (popular items) — not a sort option.
+  const popItems = sortItems(MOCK_PRODUCTS.filter(p => p.popular && matchQ(p)));
+  const groups = [
+    ...(popItems.length ? [{ cat: POPULAR, items: popItems }] : []),
+    ...Array.from(new Set(MOCK_PRODUCTS.map(p => p.category)))
+      .map(cat => ({ cat, items: sortItems(MOCK_PRODUCTS.filter(p => p.category === cat && matchQ(p))) }))
+      .filter(g => g.items.length > 0),
+  ];
 
   return (
-    <div className="pb-28 pt-[170px] px-4 max-w-2xl mx-auto">
+    <div className="pb-28 pt-[170px] px-4 max-w-2xl lg:max-w-none mx-auto">
       {!q && (
         <div className="mb-6 -mx-4 px-4">
           <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2">
-            {BANNERS.map(banner => (
-              <div key={banner.id} className="min-w-[88%] md:min-w-[60%] h-44 rounded-3xl relative overflow-hidden snap-center shadow-lg shadow-brand-900/10">
-                <img src={banner.image} alt={banner.title} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-brand-900 via-brand-900/40 to-transparent"></div>
-                <div className="absolute inset-0 p-5 flex flex-col justify-end text-white">
-                  <span className="inline-flex items-center gap-1.5 bg-secondary-500 text-ink text-xs font-black px-3 py-1 rounded-full w-fit mb-2">
-                    <TicketPercent className="w-3.5 h-3.5" />{banner.title}
-                  </span>
-                  <p className="text-sm font-medium text-gray-100">{banner.subtitle}</p>
-                </div>
+            {BANNER_IMAGES.map((src, i) => (
+              <div key={i} className="min-w-[88%] md:min-w-[60%] aspect-[2/1] rounded-2xl overflow-hidden snap-center shadow-lg shadow-brand-900/10 bg-gray-100">
+                <img src={src} alt="" loading="lazy" className="w-full h-full object-cover" />
               </div>
             ))}
           </div>
@@ -280,7 +303,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ t, language, searchQuery, menuV
           <h2 className="font-display font-black text-xl text-gray-900 mb-4 flex items-center gap-2.5">
             <span className="w-1.5 h-6 rounded-full bg-secondary-500" />{g.cat}
           </h2>
-          <div className={menuView === 'grid' ? 'grid grid-cols-2 gap-4' : 'flex flex-col gap-3'}>
+          <div className={menuView === 'grid' ? 'grid grid-cols-2 xl:grid-cols-3 gap-4' : 'flex flex-col gap-3'}>
             {g.items.map(p => (
               <ProductCard key={p.id} product={p} view={menuView} fav={favorites.includes(p.id)} onFav={() => toggleFavorite(p.id)} onSelect={() => onSelect(p)} t={t} />
             ))}
@@ -292,16 +315,29 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ t, language, searchQuery, menuV
 };
 
 const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
-  const { t, language, toggleLanguage, dir } = useLanguage();
+  const { t, language, toggleLanguage, setLanguage, dir } = useLanguage();
   const toast = useToast();
+  const ar = language === 'ar';
   const [notificationsOn, setNotificationsOn] = useState(true);
   const [searchQuery, setSearchQuery] = useState(''); // menu search (header)
   const [scrolled, setScrolled] = useState(false); // scroll-aware header
-  const [activeCat, setActiveCat] = useState(MOCK_PRODUCTS[0].category); // active menu category (scrollspy)
+  const [activeCat, setActiveCat] = useState(language === 'ar' ? '🔥 الأكثر طلباً' : '🔥 Most ordered'); // active menu category (scrollspy) — starts on the popular category
   const activeCatRef = useRef(activeCat);
   activeCatRef.current = activeCat;
   const spyLock = useRef(0); // suppresses scrollspy briefly right after a tab click
-  const [menuView, setMenuView] = useState<'grid' | 'list'>('grid'); // product layout toggle
+  const [menuView, setMenuView] = useState<'grid' | 'list'>('list'); // product layout toggle (mobile defaults to list)
+  const [sortBy, setSortBy] = useState<'default' | 'popular' | 'price_hi' | 'price_lo'>('default'); // menu sort
+  const [sortOpen, setSortOpen] = useState(false); // sort dropdown open
+  const [isDesktop, setIsDesktop] = useState(false); // ≥lg → render the dedicated desktop layout
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false); // desktop cart slide-in drawer
+  const bannerRef = useRef<HTMLDivElement>(null); // desktop banner strip scroller
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const apply = () => setIsDesktop(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -311,14 +347,28 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
 
   // App State
   // Added POINTS to activeTab type
-  const [activeTab, setActiveTab] = useState<'HOME' | 'CART' | 'CHECKOUT' | 'PROFILE' | 'FAVORITES' | 'ORDERS' | 'ADDRESSES' | 'MAP_ADDRESS' | 'PAYMENTS' | 'SETTINGS' | 'ORDER_DETAILS' | 'POINTS' | 'CONTACT'>('HOME');
+  const [activeTab, setActiveTab] = useState<'HOME' | 'CART' | 'CHECKOUT' | 'PROFILE' | 'FAVORITES' | 'ORDERS' | 'ADDRESSES' | 'MAP_ADDRESS' | 'PAYMENTS' | 'SETTINGS' | 'ORDER_DETAILS' | 'POINTS' | 'CONTACT' | 'LANGUAGE'>('HOME');
+  // where the Addresses screen should return to (it's reachable from Profile and from Checkout)
+  const [addrBackTab, setAddrBackTab] = useState<'PROFILE' | 'CHECKOUT'>('PROFILE');
 
-  // jump to a category section (tab click)
+  // jump to a category section (tab click) — explicit ease-in-out (native
+  // `behavior: 'smooth'` easing is browser-defined and inconsistent)
   const scrollToCat = (cat: string) => {
     setActiveCat(cat);
     spyLock.current = performance.now() + 700;
     const el = document.querySelector(`[data-cat="${cat}"]`) as HTMLElement | null;
-    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 130, behavior: 'smooth' });
+    if (!el) return;
+    const from = window.scrollY;
+    const to = el.getBoundingClientRect().top + window.scrollY - 130;
+    const dur = 400;
+    const t0 = performance.now();
+    const easeInOut = (x: number) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2);
+    const step = (now: number) => {
+      const p = Math.min(1, (now - t0) / dur);
+      window.scrollTo(0, from + (to - from) * easeInOut(p));
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   };
 
   // scrollspy — highlight the category whose section sits at the top of the viewport
@@ -355,6 +405,10 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
 
   // Orders State
   const [orders, setOrders] = useState<MockOrder[]>(INITIAL_ORDERS);
+  const [ordersFilter, setOrdersFilter] = useState<'active' | 'history'>('active'); // orders-screen tab (app-level so it survives details↔back)
+  const [langBackTab, setLangBackTab] = useState<'PROFILE' | 'SETTINGS'>('PROFILE'); // where the language page returns to
+  const [appDark, setAppDark] = useState(() => localStorage.getItem('ord-dark') === '1'); // app dark mode (settings toggle)
+  useEffect(() => { localStorage.setItem('ord-dark', appDark ? '1' : '0'); }, [appDark]);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   // Address State
@@ -376,15 +430,59 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
 
   // Checkout State
   const [deliveryTime, setDeliveryTime] = useState<'ASAP' | 'LATER'>('ASAP');
+  const [scheduleSlot, setScheduleSlot] = useState<string>(''); // chosen window when scheduling for later
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [scheduleTemp, setScheduleTemp] = useState('');   // working value inside the modal
+  const [scheduleCustom, setScheduleCustom] = useState(''); // raw <input type=time> value
+  const [scheduleRecent, setScheduleRecent] = useState<string[]>(['5:00 م', '8:30 م']); // previously-picked times
 
   // Order Details State
   const [selectedOrder, setSelectedOrder] = useState<MockOrder | null>(null);
+
+  // Order status simulation + post-delivery reviews (delivery review → 3s → food review)
+  const [reviewOrder, setReviewOrder] = useState<MockOrder | null>(null);
+  const [reviewStep, setReviewStep] = useState<'driver' | 'food' | 'done' | null>(null);
+  const [driverStars, setDriverStars] = useState(0);
+  const [foodStars, setFoodStars] = useState(0);
+  const [driverTags, setDriverTags] = useState<string[]>([]);
+  const [foodTags, setFoodTags] = useState<string[]>([]);
+  const [foodNote, setFoodNote] = useState('');
+  const simTimer = useRef<number | undefined>(undefined);   // order status progression
+  const reviewTimer = useRef<number | undefined>(undefined); // driver → food gap
+  useEffect(() => () => {
+    if (simTimer.current) window.clearTimeout(simTimer.current);
+    if (reviewTimer.current) window.clearTimeout(reviewTimer.current);
+  }, []);
 
   // Product Modal State
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [tempModifiers, setTempModifiers] = useState<Record<number, number[]>>({});
   const [tempQty, setTempQty] = useState(1);
   const [tempNotes, setTempNotes] = useState('');
+
+  // phone/browser back follows in-app navigation: overlays → sub-screen → home → portal
+  useHardwareBack(() => {
+    if (selectedProduct) { setSelectedProduct(null); return true; }
+    if (cartDrawerOpen) { setCartDrawerOpen(false); return true; }
+    if (scheduleModalOpen) { setScheduleModalOpen(false); return true; }
+    if (sortOpen) { setSortOpen(false); return true; }
+    switch (activeTab) {
+      case 'MAP_ADDRESS': setActiveTab('ADDRESSES'); return true;
+      case 'ADDRESSES': setActiveTab(addrBackTab); return true;
+      case 'CHECKOUT': setActiveTab('CART'); return true;
+      case 'ORDER_DETAILS': setActiveTab('ORDERS'); return true;
+      case 'LANGUAGE': setActiveTab(langBackTab); return true;
+      case 'PAYMENTS':
+      case 'SETTINGS':
+      case 'POINTS':
+      case 'CONTACT': setActiveTab('PROFILE'); return true;
+      case 'CART':
+      case 'FAVORITES':
+      case 'ORDERS':
+      case 'PROFILE': setActiveTab('HOME'); return true;
+      default: onBackToPortal(); return true; // HOME → back to the portal (the "launcher")
+    }
+  });
 
   // Cart/Checkout logic
   const cartTotal = cart.reduce((sum, item) => {
@@ -435,15 +533,48 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                   price: item.product.price // Simplified logic
               })),
               type: orderType,
-              payment: selectedPaymentMethod
+              payment: selectedPaymentMethod,
+              driver: orderType === 'DELIVERY' ? (ar ? 'سعد المطيري' : 'Saad Al-Mutairi') : undefined,
           };
 
           setOrders([newOrder, ...orders]);
           setCart([]);
           setIsPlacingOrder(false);
           setActiveTab('ORDERS');
+
+          // walk the order through its statuses; the reviews fire once it's delivered
+          runOrderSimulation(newOrder);
       }, 2000);
   };
+
+  // ── order status simulation → reviews (delivery review, then 3s, then food review) ──
+  const STAGE_MS = 2200; // time spent in each status in this demo
+  const runOrderSimulation = (order: MockOrder) => {
+    const flow: MockOrder['status'][] = order.type === 'DELIVERY'
+      ? ['preparing', 'ready', 'delivering', 'completed']
+      : ['preparing', 'ready', 'completed'];
+    let i = 0;
+    const tick = () => {
+      const status = flow[i];
+      setOrders(os => os.map(o => o.id === order.id ? { ...o, status } : o));
+      if (status === 'completed') { openReview({ ...order, status }); return; }
+      i++;
+      simTimer.current = window.setTimeout(tick, STAGE_MS);
+    };
+    if (simTimer.current) window.clearTimeout(simTimer.current);
+    simTimer.current = window.setTimeout(tick, STAGE_MS);
+  };
+  const openReview = (order: MockOrder) => {
+    setDriverStars(0); setFoodStars(0); setDriverTags([]); setFoodTags([]); setFoodNote('');
+    setReviewOrder(order);
+    // delivery → driver review first (food review opens when the driver review is submitted);
+    // pickup / dine-in → straight to the food review
+    setReviewStep(order.type === 'DELIVERY' ? 'driver' : 'food');
+  };
+  const goFood = () => setReviewStep('food'); // driver review submitted → food review
+  const closeReview = () => { setReviewOrder(null); setReviewStep(null); };
+  const toggleTag = (list: string[], set: React.Dispatch<React.SetStateAction<string[]>>, key: string) =>
+    set(list.includes(key) ? list.filter(x => x !== key) : [...list, key]);
 
   const toggleFavorite = (id: number) => {
     if (favorites.includes(id)) {
@@ -560,6 +691,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
       const markerRef = useRef<L.Marker | null>(null);
       const [searchQuery, setSearchQuery] = useState('');
       const [isLocating, setIsLocating] = useState(false);
+      const [searchFocused, setSearchFocused] = useState(false); // hide the bottom panel while searching so the map stays visible
 
       useEffect(() => {
           if (!mapRef.current || mapInstance.current) return;
@@ -678,6 +810,8 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                             placeholder={t('ord_search') + '...'}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
+                            onFocus={() => setSearchFocused(true)}
+                            onBlur={() => setTimeout(() => setSearchFocused(false), 100)}
                             className="w-full bg-white h-12 rounded-full ps-12 pe-4 focus:outline-none text-sm font-bold text-gray-700 placeholder-gray-400"
                         />
                         <Search className="w-5 h-5 text-gray-400 absolute top-3.5 start-4" />
@@ -692,14 +826,14 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                   {/* Locate Me Button - Repositioned */}
                   <button 
                       onClick={getCurrentLocation}
-                      className="absolute bottom-[340px] right-4 bg-white w-12 h-12 rounded-full shadow-xl z-[400] flex items-center justify-center text-gray-700 hover:text-brand-600 transition-colors active:scale-95"
+                      className={`absolute bottom-[340px] right-4 bg-white w-12 h-12 rounded-full shadow-xl z-[400] flex items-center justify-center text-gray-700 hover:text-brand-600 transition-colors active:scale-95 ${searchFocused ? 'hidden' : ''}`}
                   >
                       {isLocating ? <Loader className="w-6 h-6 animate-spin" /> : <Crosshair className="w-6 h-6" />}
                   </button>
               </div>
 
-              {/* Bottom Sheet - Cleaner Design */}
-              <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-10 animate-fade-in-up max-h-[45vh] overflow-y-auto">
+              {/* Bottom Sheet - Cleaner Design (hidden while searching so it doesn't cover the map) */}
+              <div className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-10 animate-fade-in-up max-h-[45vh] overflow-y-auto ${searchFocused ? 'hidden' : ''}`}>
                   <div className="p-6 pb-8">
                       {/* Drag Handle */}
                       <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
@@ -821,6 +955,55 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
               </div>
           </div>
       );
+  };
+
+  const ScheduleModal = () => {
+    const fmtHour = (h24: number) => {
+      const pm = h24 >= 12; const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+      return `${h12}:00 ${ar ? (pm ? 'م' : 'ص') : (pm ? 'PM' : 'AM')}`;
+    };
+    // same-day hourly windows starting AFTER the current hour (2:45 -> 3:00, 4:00 ...)
+    const now = new Date();
+    const times: string[] = [];
+    for (let h = now.getHours() + 1; h <= 23 && times.length < 6; h++) times.push(fmtHour(h));
+    const to12h = (v: string) => {
+      if (!v) return '';
+      const [h, m] = v.split(':').map(Number);
+      const pm = h >= 12; const h12 = h % 12 === 0 ? 12 : h % 12;
+      return `${h12}:${String(m).padStart(2, '0')} ${ar ? (pm ? 'م' : 'ص') : (pm ? 'PM' : 'AM')}`;
+    };
+    const isCustom = !!scheduleTemp && !times.includes(scheduleTemp);
+    const chipCls = (sel: boolean) => `px-3 py-3 rounded-2xl border-2 text-sm font-bold text-center transition-all ${sel ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}`;
+    return (
+      <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => setScheduleModalOpen(false)}>
+        <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-3xl px-6 pb-6 pt-3 animate-slide-up" onClick={e => e.stopPropagation()}>
+          <div className="flex justify-center mb-5 md:hidden"><span className="w-12 h-1.5 bg-gray-300 rounded-full" /></div>
+          <h2 className="text-lg font-display font-black text-gray-900">{ar ? 'اختر وقت التوصيل' : 'Choose delivery time'}</h2>
+          <p className="text-sm text-gray-400 mb-4">{ar ? 'التوصيل في نفس اليوم' : 'Same-day delivery'}</p>
+          {scheduleRecent.length > 0 && (
+            <div className="mb-4">
+              <p className="text-xs font-bold text-gray-400 mb-2">{ar ? 'أوقات سابقة' : 'Recent'}</p>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                {scheduleRecent.map(r => (
+                  <button key={r} onClick={() => { setScheduleTemp(r); setScheduleCustom(''); }} className={`shrink-0 px-3.5 py-2 rounded-xl border-2 text-sm font-bold whitespace-nowrap transition-all ${scheduleTemp === r ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'}`}>{r}</button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-3 gap-2.5 mb-6">
+            {times.map(tm => (
+              <button key={tm} onClick={() => { setScheduleTemp(tm); setScheduleCustom(''); }} className={chipCls(scheduleTemp === tm)}>{tm}</button>
+            ))}
+            <label className={`col-span-3 flex items-center gap-2 px-4 py-3 rounded-2xl border-2 cursor-pointer transition-all ${isCustom ? 'border-brand-600 bg-brand-50' : 'border-gray-200 bg-white focus-within:border-brand-600 hover:border-gray-300'}`}>
+              <Clock className={`w-4 h-4 shrink-0 ${isCustom ? 'text-brand-600' : 'text-gray-500'}`} />
+              <span className={`text-sm font-bold shrink-0 ${isCustom ? 'text-brand-700' : 'text-gray-700'}`}>{ar ? 'وقت مخصص' : 'Custom time'}</span>
+              <input type="time" dir="ltr" value={scheduleCustom} onChange={e => { setScheduleCustom(e.target.value); setScheduleTemp(to12h(e.target.value)); }} className="flex-1 min-w-0 bg-transparent outline-none text-sm font-bold text-brand-700 text-end" />
+            </label>
+          </div>
+          <button disabled={!scheduleTemp} onClick={() => { setScheduleSlot(scheduleTemp); setDeliveryTime('LATER'); setScheduleRecent(prev => [scheduleTemp, ...prev.filter(x => x !== scheduleTemp)].slice(0, 5)); setScheduleModalOpen(false); }} className="w-full bg-brand-600 text-white font-bold py-3.5 rounded-2xl hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all">{ar ? 'تأكيد الوقت' : 'Confirm time'}</button>
+        </div>
+      </div>
+    );
   };
 
   const BranchSelectorModal = () => (
@@ -956,10 +1139,12 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
     });
 
     return (
-        <div className="fixed inset-0 z-[60] bg-white flex flex-col animate-slide-up">
+        <div className="fixed inset-0 z-[60] lg:flex lg:items-center lg:justify-center lg:p-6 lg:bg-ink/50 lg:backdrop-blur-sm">
+            <div className="hidden lg:block absolute inset-0" onClick={() => setSelectedProduct(null)} />
+            <div className="relative bg-white flex flex-col h-full w-full animate-slide-up lg:h-[86vh] lg:max-h-[700px] lg:max-w-5xl lg:flex-row lg:rounded-3xl lg:overflow-hidden lg:shadow-2xl">
 
                 {/* Header image — title + price overlaid */}
-                <div className="h-64 sm:h-80 relative shrink-0">
+                <div className="h-64 sm:h-80 relative shrink-0 lg:h-full lg:w-[44%]">
                     <img src={selectedProduct.image} className="w-full h-full object-cover" alt={selectedProduct.name} />
                     <span className="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/10 to-ink/25" />
                     <button
@@ -977,9 +1162,17 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                     </div>
                 </div>
 
+                {/* right column — details (content + footer) */}
+                <div className="flex-1 flex flex-col min-h-0 lg:w-[56%]">
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto no-scrollbar">
-                  <div className="max-w-2xl mx-auto px-5 py-6">
+                  <div className="max-w-2xl mx-auto px-5 py-6 lg:px-8">
+                    {/* calories */}
+                    {selectedProduct.calories ? (
+                        <span className="inline-flex items-center gap-1.5 bg-secondary-50 border border-secondary-500/20 text-gray-700 text-sm font-bold rounded-full px-3 py-1 mb-4">
+                            <Flame className="w-4 h-4 text-secondary-500" />{selectedProduct.calories} {t('ord_calories')}
+                        </span>
+                    ) : null}
                     <p className="text-gray-500 leading-relaxed mb-6">{selectedProduct.description}</p>
 
                     <div className="space-y-9">
@@ -1052,7 +1245,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                     <div className="flex gap-3 items-center">
                         <div className="flex items-center h-12 bg-gray-100 rounded-full px-1.5 shrink-0">
                             <button onClick={() => setTempQty(Math.max(1, tempQty - 1))} aria-label="-" className="w-9 h-9 flex items-center justify-center text-gray-700 hover:text-brand-600"><Minus className="w-5 h-5" /></button>
-                            <span className="font-black w-7 text-center">{tempQty}</span>
+                            <span className="font-black w-7 text-center text-gray-900">{tempQty}</span>
                             <button onClick={() => setTempQty(tempQty + 1)} aria-label="+" className="w-9 h-9 flex items-center justify-center text-gray-700 hover:text-brand-600"><Plus className="w-5 h-5" /></button>
                         </div>
                         <button
@@ -1065,6 +1258,8 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                     </div>
                   </div>
                 </div>
+                </div>
+            </div>
         </div>
     );
   };
@@ -1079,17 +1274,19 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
     const vat = subtotal * 0.15;
 
     return (
-        <div className="pt-6 pb-32 px-4 max-w-2xl mx-auto animate-fade-in">
-             <div className="flex items-center gap-3 mb-5">
+        <div className="pb-32 px-4 max-w-2xl mx-auto animate-fade-in">
+             {/* fixed header — stays put while the order scrolls */}
+             <div className="sticky top-0 z-20 bg-pageBg -mx-4 px-4 pt-6 pb-4 mb-1 flex items-center gap-3">
                 <button onClick={() => setActiveTab('ORDERS')} className="w-9 h-9 rounded-full bg-white shadow-sm border border-gray-100 hover:bg-gray-50 text-gray-600 flex items-center justify-center shrink-0">
                     <ArrowRight className={`w-5 h-5 ${language === 'en' ? 'rotate-180' : ''}`} />
                 </button>
                 <div className="flex-1 min-w-0">
-                    <h2 className="text-xl font-display font-black flex items-center gap-2 text-gray-900">
-                        {t('ord_order_details')}
-                        <span className="text-sm font-normal text-gray-400" dir="ltr">#{selectedOrder.id}</span>
-                    </h2>
-                    <p className="text-xs text-gray-400">{selectedOrder.date}</p>
+                    <h2 className="text-xl font-display font-black text-gray-900 truncate">{t('ord_order_details')}</h2>
+                    <p className="text-xs text-gray-400 flex items-center gap-1.5">
+                        <span dir="ltr" className="font-bold text-gray-500">{selectedOrder.id}</span>
+                        <span>·</span>
+                        <span dir="ltr">{selectedOrder.date}</span>
+                    </p>
                 </div>
                 <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${getStatusColor(selectedOrder.status)}`}>{getStatusText(selectedOrder.status)}</span>
             </div>
@@ -1130,6 +1327,25 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                     ))}
                 </div>
             </section>
+
+            {/* proof of delivery — completed delivery orders */}
+            {selectedOrder.status === 'completed' && selectedOrder.type === 'DELIVERY' && selectedOrder.proofPhoto && (
+                <section className="mb-5">
+                    <h3 className="flex items-center gap-2.5 font-display font-bold text-gray-900 mb-3"><span className="w-1.5 h-5 rounded-full bg-secondary-500" />{language === 'ar' ? 'إثبات التسليم' : 'Proof of delivery'}</h3>
+                    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                        <div className="relative">
+                            <img src={selectedOrder.proofPhoto} alt="" className="w-full h-44 object-cover" />
+                            <span className="absolute bottom-2 start-2 inline-flex items-center gap-1.5 bg-ink/70 text-white text-[11px] font-bold px-2.5 py-1 rounded-full">
+                                <Camera className="w-3.5 h-3.5" />{language === 'ar' ? 'صورة التسليم' : 'Delivery photo'}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2 px-4 py-3">
+                            <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                            <p className="text-sm font-semibold text-gray-600">{language === 'ar' ? `تم التسليم${selectedOrder.deliveredAt ? ` · ${selectedOrder.deliveredAt}` : ''}` : `Delivered${selectedOrder.deliveredAt ? ` · ${selectedOrder.deliveredAt}` : ''}`}</p>
+                        </div>
+                    </div>
+                </section>
+            )}
 
             {/* info */}
             <div className="grid grid-cols-2 gap-3 mb-5">
@@ -1246,7 +1462,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
     return (
         <div className="pt-6 pb-32 px-4 max-w-2xl mx-auto animate-fade-in">
             <div className="flex items-center gap-3 mb-5">
-                <button onClick={() => setActiveTab('PROFILE')} className="w-9 h-9 rounded-full bg-white shadow-sm border border-gray-100 hover:bg-gray-50 text-gray-600 flex items-center justify-center shrink-0">
+                <button onClick={() => setActiveTab(addrBackTab)} className="w-9 h-9 rounded-full bg-white shadow-sm border border-gray-100 hover:bg-gray-50 text-gray-600 flex items-center justify-center shrink-0">
                     <ArrowRight className={`w-5 h-5 ${language === 'en' ? 'rotate-180' : ''}`} />
                 </button>
                 <h2 className="text-2xl font-display font-black text-gray-900">{t('ord_saved_addresses')}</h2>
@@ -1278,7 +1494,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                     setTempAddress({ id: 0, type: '', label: '', address: '', isDefault: false, lat: 21.4225, lng: 39.8262 });
                     setActiveTab('MAP_ADDRESS');
                 }}
-                className="w-full mt-5 bg-brand-50 text-brand-700 font-bold py-3.5 rounded-2xl hover:bg-brand-100 transition-all flex items-center justify-center gap-2"
+                className="w-full mt-5 bg-brand-600 text-white font-bold py-3.5 rounded-2xl hover:bg-brand-700 shadow-lg shadow-brand-600/25 transition-all flex items-center justify-center gap-2"
             >
                 <Plus className="w-5 h-5" />
                 {t('ord_add_address')}
@@ -1335,6 +1551,47 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
     );
   };
 
+  const LanguageScreen = () => {
+    const langs: { id: 'ar' | 'en'; native: string; other: string; hint: string }[] = [
+        { id: 'ar', native: 'العربية', other: 'Arabic', hint: 'المملكة العربية السعودية' },
+        { id: 'en', native: 'English', other: 'الإنجليزية', hint: 'English (US)' },
+    ];
+    return (
+        <div className="pt-6 pb-32 px-4 max-w-2xl mx-auto animate-fade-in">
+            <div className="flex items-center gap-3 mb-5">
+                <button onClick={() => setActiveTab(langBackTab)} className="w-9 h-9 rounded-full bg-white shadow-sm border border-gray-100 hover:bg-gray-50 text-gray-600 flex items-center justify-center shrink-0">
+                    <ArrowRight className={`w-5 h-5 ${language === 'en' ? 'rotate-180' : ''}`} />
+                </button>
+                <h2 className="text-2xl font-display font-black text-gray-900">{t('ord_language')}</h2>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 overflow-hidden">
+                {langs.map(l => {
+                    const on = language === l.id;
+                    return (
+                        <button key={l.id} onClick={() => setLanguage(l.id)} className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors">
+                            <span className={`w-11 h-11 rounded-full flex items-center justify-center font-black text-sm shrink-0 ${on ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500'}`} dir="ltr">{l.id === 'ar' ? 'ع' : 'EN'}</span>
+                            <span className="flex-1 min-w-0 text-start">
+                                <span className={`block font-bold ${on ? 'text-brand-700' : 'text-gray-800'}`}>{l.native}</span>
+                                <span className="block text-xs text-gray-400">{l.other} · {l.hint}</span>
+                            </span>
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors ${on ? 'bg-brand-600 border-brand-600' : 'border-gray-300'}`}>
+                                {on && <Check className="w-3.5 h-3.5 text-white" />}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+
+            <p className="text-xs text-gray-400 mt-4 px-1 leading-relaxed">
+                {language === 'ar'
+                    ? 'يتم تطبيق اللغة على كامل التطبيق مباشرةً، بما في ذلك اتجاه الواجهة.'
+                    : 'The language applies to the whole app immediately, including the layout direction.'}
+            </p>
+        </div>
+    );
+  };
+
   const SettingsScreen = () => {
     return (
         <div className="pt-6 pb-32 px-4 max-w-2xl mx-auto animate-fade-in">
@@ -1348,7 +1605,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
             <div className="space-y-5">
                 {/* General */}
                 <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 overflow-hidden">
-                    <button onClick={toggleLanguage} className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                    <button onClick={() => { setLangBackTab('SETTINGS'); setActiveTab('LANGUAGE'); }} className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
                         <div className="flex items-center gap-3">
                             <span className="w-10 h-10 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center"><Globe className="w-5 h-5" /></span>
                             <span className="font-bold text-gray-800">{t('ord_language')}</span>
@@ -1368,7 +1625,23 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                             onClick={() => setNotificationsOn(v => !v)}
                             className={`w-12 h-7 rounded-full relative shrink-0 transition-colors ${notificationsOn ? 'bg-brand-600' : 'bg-gray-300'}`}
                         >
-                            <span className={`w-5 h-5 bg-white rounded-full absolute top-1 right-1 shadow transition-transform ${notificationsOn ? '-translate-x-5' : ''}`}></span>
+                            <span className={`w-5 h-5 bg-white rounded-full absolute top-1 start-1 shadow transition-transform ${notificationsOn ? 'ltr:translate-x-5 rtl:-translate-x-5' : ''}`}></span>
+                        </button>
+                    </div>
+                    <div className="w-full p-4 flex items-center justify-between border-t border-gray-50">
+                        <div className="flex items-center gap-3">
+                            <span className="w-10 h-10 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center"><Moon className="w-5 h-5" /></span>
+                            <span className="font-bold text-gray-800">{language === 'ar' ? 'الوضع الداكن' : 'Dark mode'}</span>
+                        </div>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={appDark}
+                            aria-label={language === 'ar' ? 'الوضع الداكن' : 'Dark mode'}
+                            onClick={() => setAppDark(v => !v)}
+                            className={`w-12 h-7 rounded-full relative shrink-0 transition-colors ${appDark ? 'bg-brand-600' : 'bg-gray-300'}`}
+                        >
+                            <span className={`w-5 h-5 bg-white rounded-full absolute top-1 start-1 shadow transition-transform ${appDark ? 'ltr:translate-x-5 rtl:-translate-x-5' : ''}`}></span>
                         </button>
                     </div>
                 </div>
@@ -1380,7 +1653,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                             <span className="w-10 h-10 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center"><Shield className="w-5 h-5" /></span>
                             <span className="font-bold text-gray-800">{t('ord_settings_privacy')}</span>
                         </div>
-                        <ChevronLeft className="w-5 h-5 text-gray-300" />
+                        <ChevronLeft className={`w-5 h-5 text-gray-300 ${language === 'en' ? 'rotate-180' : ''}`} />
                     </button>
                     <button onClick={onBackToPortal} className="w-full p-4 flex items-center gap-3 hover:bg-gray-50 transition-colors">
                         <span className="w-10 h-10 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center"><LogOut className="w-5 h-5" /></span>
@@ -1398,6 +1671,55 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
     );
   };
 
+
+  // Desktop-only sticky cart panel shown beside the menu (web two-pane view).
+  const CartAside = () => {
+      const ar = language === 'ar';
+      return (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <h3 className="font-display font-black text-gray-900 flex items-center gap-2"><ShoppingBag className="w-5 h-5 text-brand-600" />{ar ? 'سلة الطلب' : 'Your cart'}</h3>
+                  {cart.length > 0 && <button onClick={() => setCart([])} className="text-xs font-bold text-gray-400 hover:text-red-500 transition-colors">{ar ? 'تفريغ' : 'Clear'}</button>}
+              </div>
+              {cart.length === 0 ? (
+                  <div className="px-5 py-12 text-center">
+                      <ShoppingBag className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                      <p className="text-sm font-bold text-gray-500">{ar ? 'سلتك فارغة' : 'Your cart is empty'}</p>
+                      <p className="text-xs text-gray-400 mt-1">{ar ? 'أضف أطباقاً من القائمة' : 'Add dishes from the menu'}</p>
+                  </div>
+              ) : (
+                  <>
+                      <div className="max-h-[44vh] overflow-y-auto px-5 divide-y divide-gray-100">
+                          {cart.map((item) => {
+                              const setQty = (q: number) => setCart(cart.map(c => c.cartId === item.cartId ? { ...c, quantity: Math.max(1, q) } : c));
+                              return (
+                                  <div key={item.cartId} className="flex items-center gap-3 py-3">
+                                      <img src={item.product.image} className="w-12 h-12 rounded-lg object-cover shrink-0" alt={item.product.name} />
+                                      <div className="flex-1 min-w-0">
+                                          <div className="font-bold text-sm text-gray-900 truncate">{item.product.name}</div>
+                                          <div className="text-brand-700 font-black text-sm mt-0.5">{item.product.price * item.quantity} {t('ord_sar')}</div>
+                                      </div>
+                                      <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 shrink-0">
+                                          <button onClick={() => setQty(item.quantity - 1)} aria-label="-" className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center text-brand-600"><Minus className="w-3.5 h-3.5" /></button>
+                                          <span className="w-5 text-center font-bold text-xs">{item.quantity}</span>
+                                          <button onClick={() => setQty(item.quantity + 1)} aria-label="+" className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center text-brand-600"><Plus className="w-3.5 h-3.5" /></button>
+                                      </div>
+                                  </div>
+                              );
+                          })}
+                      </div>
+                      <div className="px-5 py-4 border-t border-gray-100">
+                          <div className="flex items-center justify-between mb-3">
+                              <span className="text-gray-500 font-bold text-sm">{ar ? 'الإجمالي' : 'Total'}</span>
+                              <span className="font-display font-black text-xl text-brand-700">{cartTotal} {t('ord_sar')}</span>
+                          </div>
+                          <button onClick={() => setActiveTab('CHECKOUT')} className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-xl transition-colors">{ar ? 'إتمام الطلب' : 'Checkout'}</button>
+                      </div>
+                  </>
+              )}
+          </div>
+      );
+  };
 
   const CartScreen = () => {
       const ar = language === 'ar';
@@ -1537,7 +1859,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                       </div>
                   </div>
                   <span className={`relative w-12 h-7 rounded-full shrink-0 transition-colors ${redeem > 0 ? 'bg-brand-600' : 'bg-gray-300'}`}>
-                      <span className={`absolute top-1 right-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${redeem > 0 ? '-translate-x-5' : ''}`} />
+                      <span className={`absolute top-1 start-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${redeem > 0 ? 'ltr:translate-x-5 rtl:-translate-x-5' : ''}`} />
                   </span>
               </button>
 
@@ -1626,7 +1948,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                         <Crosshair className="w-4 h-4 text-brand-600" />{ar ? 'تعديل الموقع' : 'Edit pin'}
                     </span>
                 </button>
-                <button onClick={() => setActiveTab('ADDRESSES')} className="w-full mt-3 flex items-center gap-3 bg-white border border-gray-100 rounded-2xl shadow-sm p-4 text-start hover:border-gray-200 transition-colors">
+                <button onClick={() => { setAddrBackTab('CHECKOUT'); setActiveTab('ADDRESSES'); }} className="w-full mt-3 flex items-center gap-3 bg-white border border-gray-100 rounded-2xl shadow-sm p-4 text-start hover:border-gray-200 transition-colors">
                     <span className="w-10 h-10 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center shrink-0"><MapPin className="w-5 h-5" /></span>
                     <div className="min-w-0 flex-1">
                         <div className="font-bold text-gray-900">{selectedAddress ? selectedAddress.label : (ar ? 'اختر عنوان التوصيل' : 'Choose delivery address')}</div>
@@ -1643,9 +1965,12 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                     {([['ASAP', t('ord_asap'), Bike], ['LATER', t('ord_later'), Clock]] as const).map(([id, label, Icon]) => {
                         const on = deliveryTime === id;
                         return (
-                            <button key={id} onClick={() => setDeliveryTime(id)} className={`flex items-center gap-3 p-3.5 rounded-2xl border-2 transition-all ${on ? 'border-brand-600 bg-brand-50' : 'border-transparent bg-white shadow-sm hover:shadow-md'}`}>
+                            <button key={id} onClick={() => { if (id === 'LATER') { setScheduleTemp(scheduleSlot); setScheduleModalOpen(true); } else { setDeliveryTime('ASAP'); setScheduleSlot(''); } }} className={`flex items-center gap-3 p-3.5 rounded-2xl border-2 text-start transition-all ${on ? 'border-brand-600 bg-brand-50' : 'border-transparent bg-white shadow-sm hover:shadow-md'}`}>
                                 <span className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${on ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500'}`}><Icon className="w-5 h-5" /></span>
-                                <span className={`font-bold ${on ? 'text-brand-700' : 'text-gray-700'}`}>{label}</span>
+                                <span className="min-w-0">
+                                    <span className={`block font-bold ${on ? 'text-brand-700' : 'text-gray-700'}`}>{label}</span>
+                                    {id === 'LATER' && scheduleSlot && <span className="block text-xs font-bold text-brand-600">{scheduleSlot}</span>}
+                                </span>
                             </button>
                         );
                     })}
@@ -1717,7 +2042,9 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
   }
 
   const OrdersScreen = () => {
-      const [filter, setFilter] = useState<'active' | 'history'>('active');
+      // lifted to app state (ordersFilter) so the chosen tab survives opening details and coming back
+      const filter = ordersFilter;
+      const setFilter = setOrdersFilter;
       
       const filteredOrders = orders.filter(order => {
           if (filter === 'active') {
@@ -1751,13 +2078,13 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                       filteredOrders.map(order => {
                           const stepIndex = stepOf[order.status] ?? 0;
                           return (
-                          <div key={order.id} className="bg-white rounded-2xl border border-gray-100">
+                          <div key={order.id} onClick={() => { setSelectedOrder(order); setActiveTab('ORDER_DETAILS'); }} className="bg-white rounded-2xl border border-gray-100 cursor-pointer hover:border-gray-200 hover:shadow-sm transition-all">
                               {/* head + tracker */}
                               <div className="p-4">
                                   <div className="flex items-start justify-between gap-3">
                                       <div className="min-w-0">
                                           <div className="flex items-center gap-2">
-                                              <span className="font-display font-bold text-gray-900" dir="ltr">#{order.id}</span>
+                                              <span className="font-display font-bold text-gray-900" dir="ltr">{order.id}</span>
                                               <span className="text-xs text-gray-400">· {order.date}</span>
                                           </div>
                                           <p className="text-sm text-gray-500 mt-1 truncate">{order.items.map(it => `${it.quantity}× ${it.name}`).join(' · ')}</p>
@@ -1785,11 +2112,11 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                                   <span className="text-sm"><span className="text-gray-400">{t('ord_total')} </span><span className="font-bold text-brand-700">{order.total} {t('ord_sar')}</span></span>
                                   <div className="flex gap-2">
                                       {filter === 'history' && (
-                                          <button className="flex items-center gap-1.5 text-xs font-bold text-brand-700 bg-brand-50 px-3 py-1.5 rounded-full hover:bg-brand-100 transition-colors">
+                                          <button onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-xs font-bold text-brand-700 bg-brand-50 px-3 py-1.5 rounded-full hover:bg-brand-100 transition-colors">
                                               <RefreshCw className="w-3.5 h-3.5" /> {t('ord_reorder')}
                                           </button>
                                       )}
-                                      <button onClick={() => { setSelectedOrder(order); setActiveTab('ORDER_DETAILS'); }} className="text-xs font-bold text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors">
+                                      <button onClick={e => { e.stopPropagation(); setSelectedOrder(order); setActiveTab('ORDER_DETAILS'); }} className="text-xs font-bold text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors">
                                           {t('ord_details')}
                                       </button>
                                   </div>
@@ -1807,7 +2134,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
       const ar = language === 'ar';
       const menu = [
           { Icon: ShoppingBag, label: t('ord_track'), go: () => setActiveTab('ORDERS') },
-          { Icon: MapPin, label: t('ord_saved_addresses'), go: () => setActiveTab('ADDRESSES') },
+          { Icon: MapPin, label: t('ord_saved_addresses'), go: () => { setAddrBackTab('PROFILE'); setActiveTab('ADDRESSES'); } },
           { Icon: CreditCard, label: t('ord_saved_cards'), go: () => setActiveTab('PAYMENTS') },
           { Icon: HelpCircle, label: ar ? 'تواصل معنا' : 'Contact us', go: () => setActiveTab('CONTACT') },
           { Icon: ShieldCheck, label: t('ord_settings_privacy'), go: () => setActiveTab('SETTINGS') },
@@ -1823,15 +2150,13 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                       <p className="text-gray-500 text-sm">{ar ? 'مرحباً بك في المضياف العربي' : 'Welcome to Al Medhyaf'}</p>
                   </div>
               </div>
-              <div className="mt-5 flex items-center justify-between bg-secondary-50 border border-secondary-500/20 rounded-2xl p-4">
-                  <div className="flex items-center gap-3">
-                      <Star className="w-6 h-6 text-secondary-500 fill-current shrink-0" />
-                      <div className="leading-tight">
-                          <span className="block text-2xl font-display font-black text-brand-700" dir="ltr">{points}</span>
-                          <span className="block text-[11px] text-gray-500">{t('ord_points_bal')}</span>
-                      </div>
+              <div className="mt-5 flex items-center gap-3 bg-secondary-50 border border-secondary-500/20 rounded-2xl p-4">
+                  <Star className="w-6 h-6 text-secondary-500 fill-current shrink-0" />
+                  <div className="leading-tight flex-1 min-w-0">
+                      <span className="block text-2xl font-display font-black text-brand-700" dir="ltr">{points}</span>
+                      <span className="block text-[11px] text-gray-500 whitespace-nowrap">{t('ord_points_bal')}</span>
                   </div>
-                  <button onClick={() => setActiveTab('POINTS')} className="bg-brand-600 text-white px-4 py-2 rounded-full font-bold text-sm hover:bg-brand-700 transition-colors shrink-0">{t('ord_loyalty_redeem')}</button>
+                  <button onClick={() => setActiveTab('POINTS')} className="bg-brand-600 text-white px-4 py-2 rounded-full font-bold text-sm hover:bg-brand-700 transition-colors shrink-0">{ar ? 'استبدال النقاط' : 'Redeem points'}</button>
               </div>
           </div>
 
@@ -1841,9 +2166,31 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                   <button key={i} onClick={m.go} className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors">
                       <span className="w-10 h-10 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center shrink-0"><m.Icon className="w-5 h-5" /></span>
                       <span className="flex-1 text-start font-bold text-gray-800">{m.label}</span>
-                      <ChevronLeft className="w-5 h-5 text-gray-300" />
+                      <ChevronLeft className={`w-5 h-5 text-gray-300 ${language === 'en' ? 'rotate-180' : ''}`} />
                   </button>
               ))}
+              {/* language — lives in the account menu (unified across the apps) */}
+              <button onClick={() => { setLangBackTab('PROFILE'); setActiveTab('LANGUAGE'); }} className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors">
+                  <span className="w-10 h-10 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center shrink-0"><Globe className="w-5 h-5" /></span>
+                  <span className="flex-1 text-start font-bold text-gray-800">{t('ord_language')}</span>
+                  <span className="text-sm font-bold text-brand-700 bg-brand-50 px-2.5 py-1 rounded-full">{ar ? 'العربية' : 'English'}</span>
+                  <ChevronLeft className={`w-5 h-5 text-gray-300 ${language === 'en' ? 'rotate-180' : ''}`} />
+              </button>
+              {/* dark mode — inline switch in the account menu */}
+              <div className="w-full flex items-center gap-3 p-4">
+                  <span className="w-10 h-10 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center shrink-0"><Moon className="w-5 h-5" /></span>
+                  <span className="flex-1 text-start font-bold text-gray-800">{ar ? 'الوضع الداكن' : 'Dark mode'}</span>
+                  <button
+                      type="button"
+                      role="switch"
+                      aria-checked={appDark}
+                      aria-label={ar ? 'الوضع الداكن' : 'Dark mode'}
+                      onClick={() => setAppDark(v => !v)}
+                      className={`w-12 h-7 rounded-full relative shrink-0 transition-colors ${appDark ? 'bg-brand-600' : 'bg-gray-300'}`}
+                  >
+                      <span className={`w-5 h-5 bg-white rounded-full absolute top-1 start-1 shadow transition-transform ${appDark ? 'ltr:translate-x-5 rtl:-translate-x-5' : ''}`}></span>
+                  </button>
+              </div>
           </div>
 
           {/* logout */}
@@ -1889,7 +2236,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                               <span className="block font-bold text-gray-900">{m.label}</span>
                               <span className="block text-sm text-gray-500 mt-0.5" dir="ltr">{m.value}</span>
                           </span>
-                          <ChevronLeft className="w-5 h-5 text-gray-300" />
+                          <ChevronLeft className={`w-5 h-5 text-gray-300 ${language === 'en' ? 'rotate-180' : ''}`} />
                       </a>
                   ))}
               </div>
@@ -1915,13 +2262,324 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
       );
   };
 
+  // ════════════════════ DEDICATED DESKTOP LAYOUT (≥lg) ════════════════════
+  // A purpose-built desktop tree — top nav + 3 columns (categories · products · cart).
+  // Reuses the same state, handlers, ProductCard, CartAside, sub-screens & modals.
+  // ── post-delivery review modal (driver rating + food survey) ──
+  const REVIEW_DRIVER_TAGS = [{ ar: 'مهذب', en: 'Polite' }, { ar: 'سريع', en: 'Fast' }, { ar: 'احترافي', en: 'Professional' }, { ar: 'تعامل ممتاز', en: 'Great service' }];
+  const REVIEW_FOOD_GOOD = [{ ar: 'المذاق', en: 'Taste' }, { ar: 'الكمية مناسبة', en: 'Good portion' }, { ar: 'تغليف جيد', en: 'Well packed' }, { ar: 'ساخن', en: 'Hot' }, { ar: 'يستحق السعر', en: 'Worth it' }];
+  const REVIEW_FOOD_BAD = [{ ar: 'وصل بارداً', en: 'Arrived cold' }, { ar: 'أصناف ناقصة', en: 'Missing items' }, { ar: 'طلب خاطئ', en: 'Wrong order' }, { ar: 'المذاق', en: 'Taste' }, { ar: 'التغليف', en: 'Packaging' }, { ar: 'الكمية قليلة', en: 'Small portion' }];
+  const StarRow = (value: number, onChange: (n: number) => void) => (
+    <div className="flex gap-1.5">
+      {[1, 2, 3, 4, 5].map(n => (
+        <button key={n} type="button" onClick={() => onChange(n)} className="active:scale-90 transition-transform">
+          <Star className={`w-9 h-9 transition-colors ${n <= value ? 'fill-secondary-500 text-secondary-500' : 'fill-gray-100 text-gray-200'}`} />
+        </button>
+      ))}
+    </div>
+  );
+  const ReviewModal = () => {
+    if (!reviewOrder || !reviewStep) return null;
+    return (
+      <div className="fixed inset-0 z-[70] bg-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={closeReview}>
+        <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          {reviewStep === 'driver' ? (
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-xl font-display font-black text-gray-900">{ar ? 'قيّم المندوب' : 'Rate the driver'}</h2>
+                <button onClick={closeReview} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center text-gray-500 hover:bg-gray-200"><X className="w-5 h-5" /></button>
+              </div>
+              <p className="text-sm text-gray-400 mb-4" dir="ltr">{reviewOrder.id}</p>
+              <div className="flex flex-col items-center text-center mb-4">
+                <span className="w-16 h-16 rounded-full bg-brand-600 text-white grid place-items-center font-display font-black text-2xl mb-2">{(reviewOrder.driver || '?').trim()[0]}</span>
+                <p className="font-bold text-gray-900">{reviewOrder.driver}</p>
+                <p className="text-xs text-gray-400">{ar ? 'مندوب التوصيل' : 'Delivery driver'}</p>
+              </div>
+              <p className="text-sm font-bold text-gray-700 mb-2 text-center">{ar ? 'كيف كان توصيله؟' : 'How was the delivery?'}</p>
+              <div className="flex justify-center mb-4">{StarRow(driverStars, setDriverStars)}</div>
+              <div className="flex flex-wrap gap-2 justify-center mb-5">
+                {REVIEW_DRIVER_TAGS.map(tag => { const on = driverTags.includes(tag.en); return (
+                  <button key={tag.en} onClick={() => toggleTag(driverTags, setDriverTags, tag.en)} className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${on ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>{ar ? tag.ar : tag.en}</button>
+                ); })}
+              </div>
+              <button onClick={goFood} disabled={driverStars === 0} className="w-full py-3.5 rounded-2xl bg-brand-600 hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold flex items-center justify-center gap-2 transition-colors"><Check className="w-5 h-5" />{ar ? 'إرسال' : 'Submit'}</button>
+            </div>
+          ) : reviewStep === 'food' ? (() => {
+            const negative = foodStars > 0 && foodStars <= 3;
+            const foodTagList = negative ? REVIEW_FOOD_BAD : REVIEW_FOOD_GOOD;
+            return (
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-xl font-display font-black text-gray-900">{ar ? 'قيّم الطعام' : 'Rate the food'}</h2>
+                <button onClick={closeReview} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center text-gray-500 hover:bg-gray-200"><X className="w-5 h-5" /></button>
+              </div>
+              <p className="text-sm text-gray-400 mb-4" dir="ltr">{reviewOrder.id}</p>
+              <div className="flex justify-center mb-4">
+                <span className={`w-16 h-16 rounded-full grid place-items-center transition-colors ${negative ? 'bg-red-50 text-red-500' : 'bg-secondary-100 text-brand-600'}`}><Utensils className="w-8 h-8" /></span>
+              </div>
+              <p className="text-sm font-bold text-gray-700 mb-2 text-center">{ar ? 'كيف كان طعامك؟' : 'How was your food?'}</p>
+              <div className="flex justify-center mb-4">{StarRow(foodStars, (n) => { setFoodStars(n); setFoodTags([]); })}</div>
+              {foodStars > 0 && (
+                <>
+                  <p className="text-[11px] font-bold text-gray-400 mb-2 text-center">{negative ? (ar ? 'ما الذي لم يعجبك؟' : 'What went wrong?') : (ar ? 'ما الذي أعجبك؟' : 'What stood out?')}</p>
+                  <div className="flex flex-wrap gap-2 justify-center mb-4">
+                    {foodTagList.map(tag => { const on = foodTags.includes(tag.en); return (
+                      <button key={tag.en} onClick={() => toggleTag(foodTags, setFoodTags, tag.en)} className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${on ? (negative ? 'bg-red-500 text-white border-red-500' : 'bg-brand-600 text-white border-brand-600') : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>{ar ? tag.ar : tag.en}</button>
+                    ); })}
+                  </div>
+                  <textarea value={foodNote} onChange={e => setFoodNote(e.target.value)} rows={2} placeholder={negative ? (ar ? 'أخبرنا بما حدث بالتفصيل…' : 'Tell us what happened…') : (ar ? 'أضف تعليقاً (اختياري)' : 'Add a comment (optional)')} className="w-full mb-5 bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-500 resize-none" />
+                </>
+              )}
+              <button onClick={() => setReviewStep('done')} disabled={foodStars === 0} className="w-full py-3.5 rounded-2xl bg-brand-600 hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold flex items-center justify-center gap-2 transition-colors"><Check className="w-5 h-5" />{ar ? 'إرسال التقييم' : 'Submit review'}</button>
+            </div>
+            );
+          })() : (() => {
+            const negative = foodStars > 0 && foodStars <= 3;
+            return (
+            <div className="p-8 text-center">
+              <span className={`w-20 h-20 rounded-full grid place-items-center mx-auto mb-4 ${negative ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'}`}>{negative ? <AlertCircle className="w-10 h-10" /> : <Check className="w-10 h-10" />}</span>
+              <h2 className="text-2xl font-display font-black text-gray-900 mb-1">{negative ? (ar ? 'نأسف لتجربتك' : "We're sorry") : (ar ? 'شكراً لتقييمك!' : 'Thanks for your feedback!')}</h2>
+              <p className="text-gray-500 mb-6">{negative ? (ar ? 'سيتواصل معك فريق الجودة لمعالجة ملاحظتك.' : 'Our quality team will look into it.') : (ar ? 'رأيك يساعدنا على تقديم تجربة أفضل.' : 'Your review helps us serve you better.')}</p>
+              <button onClick={closeReview} className="w-full py-3.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold transition-colors">{ar ? 'تم' : 'Done'}</button>
+            </div>
+            );
+          })()}
+        </div>
+      </div>
+    );
+  };
+
+  if (isDesktop) {
+    const ar = language === 'ar';
+    const q = searchQuery.trim();
+    const POPULAR = ar ? '🔥 الأكثر طلباً' : '🔥 Most ordered';
+    const matchQ = (p: Product) => !q || p.name.includes(q) || p.description.includes(q);
+    const sortItems = (items: Product[]) => {
+      const arr = [...items];
+      if (sortBy === 'price_hi') arr.sort((a, b) => b.price - a.price);
+      else if (sortBy === 'price_lo') arr.sort((a, b) => a.price - b.price);
+      return arr;
+    };
+    const popItems = sortItems(MOCK_PRODUCTS.filter(p => p.popular && matchQ(p)));
+    const groups = [
+      ...(popItems.length ? [{ cat: POPULAR, items: popItems }] : []),
+      ...Array.from(new Set(MOCK_PRODUCTS.map(p => p.category)))
+        .map(cat => ({ cat, items: sortItems(MOCK_PRODUCTS.filter(p => p.category === cat && matchQ(p))) }))
+        .filter(g => g.items.length > 0),
+    ];
+    const CATS = groups.map(g => g.cat);
+    const pill ='items-center gap-2 h-11 px-3 rounded-full bg-gray-50 hover:bg-gray-100 font-bold text-sm text-gray-700 transition-colors shrink-0';
+
+    return (
+      <div className={`min-h-screen bg-[#f3ece1] font-sans ${appDark ? 'dark' : ''}`} dir={dir}>
+        {/* ═══ TOP BAR — search · filters · order-type · branch · account · language · cart ═══ */}
+        <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+          <div className="max-w-[1400px] mx-auto h-16 px-6 flex items-center gap-3">
+            <button onClick={() => setActiveTab('HOME')} className="flex items-center gap-2.5 shrink-0">
+              <img src="logo-mark.png" alt="" className="h-9 w-9 object-contain" />
+              <span className="font-display font-black text-brand-800 text-lg hidden xl:block">{ar ? 'المضياف العربي' : 'Al-Medhyaf'}</span>
+            </button>
+
+            {/* search — fills the row so the trailing icons sit flush at the edge */}
+            <div className="relative flex-1">
+              <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t('ord_search') + '...'} aria-label={t('ord_search')} className="w-full h-11 bg-gray-50 border border-gray-200 rounded-full ps-11 pe-4 text-sm font-bold text-gray-800 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-500 focus:border-transparent" />
+              <Search className="w-5 h-5 text-brand-600 absolute top-3 start-4" />
+            </div>
+
+            {/* sort/filter */}
+            <div className="relative shrink-0">
+              <button onClick={() => setSortOpen(o => !o)} aria-label={ar ? 'ترتيب' : 'Sort'} className="relative h-11 w-11 grid place-items-center rounded-full bg-gray-50 hover:bg-gray-100 text-brand-600 transition-colors">
+                <SlidersHorizontal className="w-5 h-5" />
+                {sortBy !== 'default' && <span className="absolute top-2 end-2 w-2 h-2 bg-secondary-500 rounded-full" />}
+              </button>
+              {sortOpen && (
+                <>
+                  <div className="fixed inset-0 z-[45]" onClick={() => setSortOpen(false)} />
+                  <div className="absolute top-full mt-2 end-0 z-[50] bg-white rounded-2xl shadow-xl border border-gray-100 p-1.5 w-48">
+                    {([['default', ar ? 'الافتراضي' : 'Default'], ['price_hi', ar ? 'الأعلى سعراً' : 'Highest price'], ['price_lo', ar ? 'الأقل سعراً' : 'Lowest price']] as const).map(([key, label]) => (
+                      <button key={key} onClick={() => { setSortBy(key); setSortOpen(false); }} className={`w-full text-start px-3 py-2 rounded-xl text-sm font-bold flex items-center justify-between gap-2 ${sortBy === key ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-50'}`}>{label}{sortBy === key && <Check className="w-4 h-4 shrink-0" />}</button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* order type */}
+            <button onClick={() => setShowOrderTypeModal(true)} className={`${pill} hidden md:inline-flex`}>
+              {React.createElement(getOrderTypeIcon(orderType), { className: 'w-4 h-4 text-brand-600' })}<span className="hidden xl:inline">{getOrderTypeLabel(orderType)}</span>
+            </button>
+
+            {/* branch */}
+            <button onClick={() => setShowBranchModal(true)} className={`${pill} hidden md:inline-flex max-w-[170px]`}>
+              <MapPin className="w-4 h-4 text-brand-600 shrink-0" /><span className="truncate">{selectedBranch ? selectedBranch.name : (ar ? 'اختر الفرع' : 'Branch')}</span>
+            </button>
+
+            <span className="w-px h-7 bg-gray-200 shrink-0" />
+
+            {/* favorites */}
+            <button onClick={() => setActiveTab('FAVORITES')} aria-label={t('ord_favorites')} className={`relative h-11 w-11 grid place-items-center rounded-full transition-colors shrink-0 ${activeTab === 'FAVORITES' ? 'bg-brand-50 text-brand-700' : 'bg-gray-50 hover:bg-gray-100 text-gray-600'}`}>
+              <IcHeart className="w-5 h-5" />
+            </button>
+
+            {/* account */}
+            <button onClick={() => setActiveTab('PROFILE')} aria-label={t('ord_profile')} className={`relative h-11 w-11 grid place-items-center rounded-full transition-colors shrink-0 ${['PROFILE', 'ADDRESSES', 'PAYMENTS', 'SETTINGS', 'LANGUAGE', 'POINTS', 'CONTACT', 'ORDERS', 'ORDER_DETAILS'].includes(activeTab) ? 'bg-brand-50 text-brand-700' : 'bg-gray-50 hover:bg-gray-100 text-gray-600'}`}>
+              <IcUser className="w-5 h-5" />
+            </button>
+
+            {/* dark mode — desktop navbar toggle (mobile keeps it in Settings) */}
+            <button
+              onClick={() => setAppDark(v => !v)}
+              aria-label={appDark ? (language === 'ar' ? 'الوضع الفاتح' : 'Light mode') : (language === 'ar' ? 'الوضع الداكن' : 'Dark mode')}
+              className="hidden lg:grid h-11 w-11 place-items-center rounded-full bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-brand-700 transition-colors shrink-0"
+            >
+              {appDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+
+            {/* cart — far end, opens the slide-in drawer */}
+            <button onClick={() => setCartDrawerOpen(true)} aria-label={t('ord_cart')} className="relative h-11 w-11 grid place-items-center rounded-full bg-brand-600 hover:bg-brand-700 text-white transition-colors shrink-0">
+              <ShoppingBag className="w-5 h-5" />
+              {cart.length > 0 && <span className="absolute -top-1 -end-1 bg-secondary-500 text-ink text-[10px] font-black min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full border-2 border-white">{cart.length}</span>}
+            </button>
+          </div>
+
+          {/* category tabs — like the mobile version */}
+          {activeTab === 'HOME' && (
+            <div className="border-t border-gray-100">
+              <div className="max-w-[1400px] mx-auto px-6 flex items-center gap-7 overflow-x-auto no-scrollbar">
+                {CATS.map(cat => {
+                  const active = activeCat === cat;
+                  return (
+                    <button key={cat} onClick={() => scrollToCat(cat)} className={`relative whitespace-nowrap py-3 text-sm transition-colors ${active ? 'text-brand-700 font-bold' : 'text-gray-400 font-semibold hover:text-gray-600'}`}>
+                      {cat}
+                      {active && <span className="absolute bottom-0 inset-x-0 h-0.5 bg-secondary-500 rounded-full" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </header>
+
+        {activeTab === 'HOME' ? (
+          <div className="max-w-[1400px] mx-auto px-6 pt-6 pb-16">
+            {!q && (
+              <div className="relative mb-8">
+                <div ref={bannerRef} className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2">
+                  {BANNER_IMAGES.map((src, i) => (
+                    <div key={i} className="snap-start shrink-0 w-[46%] xl:w-[38%] aspect-[2/1] rounded-2xl overflow-hidden shadow-sm bg-gray-100">
+                      <img src={src} alt="" loading="lazy" className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+                <button onClick={() => bannerRef.current?.scrollBy({ left: (dir === 'rtl' ? 1 : -1) * bannerRef.current.clientWidth * 0.6, behavior: 'smooth' })} aria-label={ar ? 'السابق' : 'Previous'} className="absolute top-1/2 -translate-y-1/2 start-2 w-10 h-10 rounded-full bg-white/95 shadow-md border border-gray-200 grid place-items-center text-brand-700 hover:bg-white transition-colors z-10">
+                  {dir === 'rtl' ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+                </button>
+                <button onClick={() => bannerRef.current?.scrollBy({ left: (dir === 'rtl' ? -1 : 1) * bannerRef.current.clientWidth * 0.6, behavior: 'smooth' })} aria-label={ar ? 'التالي' : 'Next'} className="absolute top-1/2 -translate-y-1/2 end-2 w-10 h-10 rounded-full bg-white/95 shadow-md border border-gray-200 grid place-items-center text-brand-700 hover:bg-white transition-colors z-10">
+                  {dir === 'rtl' ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+                </button>
+              </div>
+            )}
+            {groups.length === 0 ? (
+              <div className="text-center text-gray-400 py-20 font-bold">{ar ? 'لا توجد منتجات مطابقة' : 'No matching products'}</div>
+            ) : groups.map(g => (
+              <section key={g.cat} data-cat={g.cat} className="scroll-mt-[128px] mb-9">
+                <h2 className="font-display font-black text-xl text-gray-900 mb-4 flex items-center gap-2.5"><span className="w-1.5 h-6 rounded-full bg-secondary-500" />{g.cat}</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-4">
+                  {g.items.map(p => <ProductCard key={p.id} product={p} view="grid" fav={favorites.includes(p.id)} onFav={() => toggleFavorite(p.id)} onSelect={() => setSelectedProduct(p)} t={t} />)}
+                </div>
+              </section>
+            ))}
+          </div>
+        ) : (
+          <div className="max-w-3xl mx-auto px-6 pt-8 pb-16 min-h-[70vh]">
+            {activeTab === 'CART' && <CartScreen />}
+            {activeTab === 'CHECKOUT' && CheckoutScreen()}
+            {activeTab === 'PROFILE' && <ProfileScreen />}
+            {activeTab === 'CONTACT' && <ContactScreen />}
+            {activeTab === 'ORDERS' && <OrdersScreen />}
+            {activeTab === 'ADDRESSES' && <AddressesScreen />}
+            {activeTab === 'MAP_ADDRESS' && <AddressMapScreen />}
+            {activeTab === 'PAYMENTS' && <PaymentsScreen />}
+            {activeTab === 'SETTINGS' && <SettingsScreen />}
+            {activeTab === 'LANGUAGE' && <LanguageScreen />}
+            {activeTab === 'ORDER_DETAILS' && <OrderDetailsScreen />}
+            {activeTab === 'POINTS' && <PointsScreen />}
+            {activeTab === 'FAVORITES' && (
+              <div className="text-center pt-10">
+                <h2 className="text-2xl font-bold mb-4 text-gray-900">{t('ord_favorites')}</h2>
+                <p className="text-gray-600">{t('ord_favorites_empty')}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ CART DRAWER (side-slide, like ecom) ═══ */}
+        <div className={`fixed inset-0 z-[70] ${cartDrawerOpen ? '' : 'pointer-events-none'}`}>
+          <div className={`absolute inset-0 bg-ink/40 backdrop-blur-sm transition-opacity duration-300 ${cartDrawerOpen ? 'opacity-100' : 'opacity-0'}`} onClick={() => setCartDrawerOpen(false)} />
+          <div className={`absolute inset-y-0 end-0 w-full max-w-[420px] bg-pageBg shadow-2xl flex flex-col transition-transform duration-300 ease-out ${cartDrawerOpen ? 'translate-x-0' : 'ltr:translate-x-full rtl:-translate-x-full'}`}>
+            <div className="flex items-center justify-between px-5 h-16 border-b border-gray-200 bg-white shrink-0">
+              <h3 className="font-display font-black text-gray-900 flex items-center gap-2"><ShoppingBag className="w-5 h-5 text-brand-600" />{ar ? 'سلة الطلب' : 'Your cart'}<span className="text-sm font-bold text-gray-400">{cart.length}</span></h3>
+              <button onClick={() => setCartDrawerOpen(false)} aria-label={t('ord_cancel')} className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 grid place-items-center text-gray-500"><X className="w-5 h-5" /></button>
+            </div>
+            {cart.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+                <div className="w-20 h-20 bg-white shadow-sm border border-gray-100 rounded-full flex items-center justify-center mb-5"><ShoppingBag className="w-9 h-9 text-gray-300" /></div>
+                <p className="font-bold text-gray-700">{ar ? 'سلتك فارغة' : 'Your cart is empty'}</p>
+                <p className="text-sm text-gray-400 mt-1">{ar ? 'أضف أطباقاً من القائمة' : 'Add dishes from the menu'}</p>
+                <button onClick={() => setCartDrawerOpen(false)} className="mt-6 bg-brand-600 text-white px-6 py-2.5 rounded-full font-bold">{ar ? 'تصفّح القائمة' : 'Browse menu'}</button>
+              </div>
+            ) : (
+              <>
+                <div className="flex-1 overflow-y-auto p-5 space-y-3">
+                  {cart.map((item) => {
+                    const setQty = (qn: number) => setCart(cart.map(c => c.cartId === item.cartId ? { ...c, quantity: Math.max(1, qn) } : c));
+                    return (
+                      <div key={item.cartId} className="flex items-start gap-3 bg-white rounded-2xl border border-gray-100 p-3">
+                        <img src={item.product.image} className="w-16 h-16 rounded-xl object-cover shrink-0" alt={item.product.name} />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-sm text-gray-900 truncate">{item.product.name}</div>
+                          <div className="text-brand-700 font-black text-sm mt-0.5">{item.product.price * item.quantity} {t('ord_sar')}</div>
+                          <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 w-fit mt-2">
+                            <button onClick={() => setQty(item.quantity - 1)} aria-label="-" className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center text-brand-600"><Minus className="w-3.5 h-3.5" /></button>
+                            <span className="w-6 text-center font-bold text-xs">{item.quantity}</span>
+                            <button onClick={() => setQty(item.quantity + 1)} aria-label="+" className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center text-brand-600"><Plus className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </div>
+                        <button onClick={() => setCart(cart.filter(c => c.cartId !== item.cartId))} aria-label={t('ord_cancel')} className="w-7 h-7 rounded-full bg-gray-100 text-gray-400 hover:bg-red-500 hover:text-white grid place-items-center shrink-0"><X className="w-4 h-4" /></button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="border-t border-gray-200 bg-white p-5 shrink-0">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-gray-500 font-bold">{ar ? 'الإجمالي' : 'Total'}</span>
+                    <span className="font-display font-black text-2xl text-brand-700">{cartTotal} {t('ord_sar')}</span>
+                  </div>
+                  <button onClick={() => { setCartDrawerOpen(false); setActiveTab('CHECKOUT'); }} className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3.5 rounded-xl transition-colors">{ar ? 'إتمام الطلب' : 'Checkout'}</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* shared modals */}
+        {showBranchModal && BranchSelectorModal()}
+        {showOrderTypeModal && OrderTypeSelectorModal()}
+        {scheduleModalOpen && ScheduleModal()}
+        {showCardModal && CardFormModal()}
+        {selectedProduct && ProductDetailModal()}
+        {reviewOrder && ReviewModal()}
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-pageBg font-sans" dir={dir}>
+    <div className={`min-h-screen bg-pageBg lg:bg-gradient-to-b lg:from-[#efe7d9] lg:to-[#e4d8c4] font-sans ${appDark ? 'dark' : ''}`} dir={dir}>
 
       {/* Top Header — only on the menu & cart (sub-pages have their own headers) */}
       {(activeTab === 'HOME' || activeTab === 'CART') && (
-      <div className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${scrolled ? 'bg-white border-b border-gray-100 shadow-sm' : 'bg-pageBg'}`}>
-          <div className="container mx-auto max-w-2xl px-4 pt-2.5 pb-2.5">
+      <div className={`fixed top-0 lg:top-[60px] inset-x-0 lg:max-w-6xl lg:mx-auto z-40 transition-all duration-300 ${scrolled ? 'bg-white border-b border-gray-100 shadow-sm' : 'bg-pageBg lg:bg-pageBg/95 lg:backdrop-blur-sm'}`}>
+          <div className="container mx-auto max-w-2xl lg:max-w-4xl lg:mx-0 px-4 pt-2.5 pb-2.5">
 
               {/* Line 1 — branch + order-type (collapses on scroll) */}
               <div className={`overflow-hidden transition-all duration-300 ${scrolled ? 'max-h-0 opacity-0' : 'max-h-14 opacity-100'}`}>
@@ -1945,18 +2603,46 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                   </div>
               </div>
 
-              {/* Line 2 — search (menu only) */}
+              {/* Line 2 — search + sort (menu only) */}
               {activeTab === 'HOME' && (
-                <div className={`relative transition-all duration-300 ${scrolled ? 'mt-0' : 'mt-2.5'}`}>
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder={t('ord_search') + '...'}
-                        aria-label={t('ord_search')}
-                        className="w-full h-10 bg-white border border-gray-200 rounded-full ps-11 pe-4 text-sm font-bold text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                    />
-                    <Search className="w-5 h-5 text-brand-600 absolute top-2.5 start-4" />
+                <div className={`flex items-center gap-2.5 lg:max-w-2xl transition-all duration-300 ${scrolled ? 'mt-0' : 'mt-2.5'}`}>
+                    <div className="relative flex-1">
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder={t('ord_search') + '...'}
+                            aria-label={t('ord_search')}
+                            className="w-full h-10 bg-white border border-gray-200 rounded-full ps-11 pe-4 text-sm font-bold text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                        />
+                        <Search className="w-5 h-5 text-brand-600 absolute top-2.5 start-4" />
+                    </div>
+                    <div className="relative shrink-0">
+                        <button
+                            onClick={() => setSortOpen(o => !o)}
+                            aria-label={language === 'ar' ? 'ترتيب' : 'Sort'}
+                            className="relative h-10 w-10 grid place-items-center rounded-full bg-white border border-gray-200 text-brand-600 hover:text-brand-800 active:scale-90 transition-all"
+                        >
+                            <SlidersHorizontal className="w-5 h-5" />
+                            {sortBy !== 'default' && <span className="absolute top-1.5 end-1.5 w-2 h-2 bg-secondary-500 rounded-full" />}
+                        </button>
+                        {sortOpen && (
+                            <>
+                                <div className="fixed inset-0 z-[45]" onClick={() => setSortOpen(false)} />
+                                <div className="absolute top-full mt-2 end-0 z-[50] bg-white rounded-2xl shadow-xl border border-gray-100 p-1.5 w-48">
+                                    {([
+                                        ['default', language === 'ar' ? 'الافتراضي' : 'Default'],
+                                        ['price_hi', language === 'ar' ? 'الأعلى سعراً' : 'Highest price'],
+                                        ['price_lo', language === 'ar' ? 'الأقل سعراً' : 'Lowest price'],
+                                    ] as const).map(([key, label]) => (
+                                        <button key={key} onClick={() => { setSortBy(key); setSortOpen(false); }} className={`w-full text-start px-3 py-2 rounded-xl text-sm font-bold flex items-center justify-between gap-2 ${sortBy === key ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                                            {label}{sortBy === key && <Check className="w-4 h-4 shrink-0" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
               )}
 
@@ -1972,7 +2658,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                         {menuView === 'grid' ? <List className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
                     </button>
                     <div className="flex gap-7 overflow-x-auto no-scrollbar">
-                        {Array.from(new Set(MOCK_PRODUCTS.map(p => p.category))).map(cat => {
+                        {[(language === 'ar' ? '🔥 الأكثر طلباً' : '🔥 Most ordered'), ...Array.from(new Set(MOCK_PRODUCTS.map(p => p.category)))].map(cat => {
                             const isActive = activeCat === cat;
                             return (
                                 <button
@@ -1994,8 +2680,17 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
       )}
 
       {/* Main Content Area */}
-      <main className="min-h-screen container mx-auto max-w-2xl">
-          {activeTab === 'HOME' && <MenuScreen t={t} language={language} searchQuery={searchQuery} menuView={menuView} favorites={favorites} toggleFavorite={toggleFavorite} onSelect={setSelectedProduct} />}
+      <main className="min-h-screen container mx-auto max-w-2xl lg:max-w-6xl lg:pt-[60px] bg-pageBg lg:shadow-2xl lg:shadow-black/10">
+          {activeTab === 'HOME' && (
+            <div className="lg:flex lg:gap-5 lg:items-start">
+              <div className="lg:flex-1 lg:min-w-0">
+                <MenuScreen t={t} language={language} searchQuery={searchQuery} menuView={menuView} sort={sortBy} favorites={favorites} toggleFavorite={toggleFavorite} onSelect={setSelectedProduct} />
+              </div>
+              <aside className="hidden lg:block w-[340px] shrink-0 pt-[170px] pe-4">
+                <div className="sticky top-[168px]"><CartAside /></div>
+              </aside>
+            </div>
+          )}
           {activeTab === 'CART' && <CartScreen />}
           {activeTab === 'CHECKOUT' && CheckoutScreen()}
           {activeTab === 'PROFILE' && <ProfileScreen />}
@@ -2007,6 +2702,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
           {activeTab === 'MAP_ADDRESS' && <AddressMapScreen />}
           {activeTab === 'PAYMENTS' && <PaymentsScreen />}
           {activeTab === 'SETTINGS' && <SettingsScreen />}
+            {activeTab === 'LANGUAGE' && <LanguageScreen />}
           {activeTab === 'ORDER_DETAILS' && <OrderDetailsScreen />}
           {activeTab === 'POINTS' && <PointsScreen />}
 
@@ -2019,7 +2715,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
       </main>
 
       {/* Grounded bar nav with a sliding gold spotlight */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 pb-safe bg-white/95 backdrop-blur-xl border-t border-gray-200 shadow-[0_-10px_30px_rgba(0,0,0,0.07)]">
+      <nav className="fixed bottom-0 inset-x-0 z-40 lg:hidden pb-safe bg-white/95 backdrop-blur-xl border-t border-gray-200 shadow-[0_-10px_30px_rgba(0,0,0,0.07)]">
           <ul className="mx-auto max-w-2xl flex items-stretch relative">
               {(() => {
                 const items = [
@@ -2027,7 +2723,7 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                   { key: 'FAVORITES', icon: IcHeart, label: t('ord_favorites'), active: activeTab === 'FAVORITES', onClick: () => setActiveTab('FAVORITES') },
                   { key: 'CART', icon: IcBag, label: t('ord_cart'), active: ['CART', 'CHECKOUT'].includes(activeTab), onClick: () => setActiveTab('CART'), badge: cart.length },
                   { key: 'ORDERS', icon: IcOrders, label: t('ord_track'), active: ['ORDERS', 'ORDER_DETAILS'].includes(activeTab), onClick: () => setActiveTab('ORDERS') },
-                  { key: 'PROFILE', icon: IcUser, label: t('ord_profile'), active: ['PROFILE', 'ADDRESSES', 'PAYMENTS', 'SETTINGS', 'POINTS', 'CONTACT'].includes(activeTab), onClick: () => setActiveTab('PROFILE') },
+                  { key: 'PROFILE', icon: IcUser, label: t('ord_profile'), active: ['PROFILE', 'ADDRESSES', 'PAYMENTS', 'SETTINGS', 'LANGUAGE', 'POINTS', 'CONTACT'].includes(activeTab), onClick: () => setActiveTab('PROFILE') },
                 ] as const;
                 const ai = Math.max(0, items.findIndex(it => it.active));
                 const slot = dir === 'rtl' ? items.length - 1 - ai : ai; // physical column (flex reverses in RTL)
@@ -2049,12 +2745,12 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
                             className="relative w-full flex flex-col items-center justify-center gap-1 py-2.5"
                           >
                             <span className="relative">
-                              <Icon className={`w-6 h-6 transition-colors ${item.active ? 'text-ink' : 'text-gray-400'}`} />
+                              <Icon className={`w-6 h-6 transition-colors ${item.active ? 'text-[#1D1D1B]' : 'text-gray-400'}`} />
                               {(item as { badge?: number }).badge ? (
                                 <span className="absolute -top-1.5 -end-2 bg-brand-600 text-white text-[10px] font-black min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full border-2 border-white">{(item as { badge?: number }).badge}</span>
                               ) : null}
                             </span>
-                            <span className={`relative text-[11px] font-bold transition-colors ${item.active ? 'text-ink' : 'text-gray-400'}`}>{item.label}</span>
+                            <span className={`relative text-[11px] font-bold transition-colors ${item.active ? 'text-[#1D1D1B]' : 'text-gray-400'}`}>{item.label}</span>
                           </button>
                         </li>
                       );
@@ -2069,10 +2765,12 @@ const Ordering: React.FC<OrderingProps> = ({ onBackToPortal }) => {
           reconcile in place instead of remounting + replaying the open animation */}
       {showBranchModal && BranchSelectorModal()}
       {showOrderTypeModal && OrderTypeSelectorModal()}
+        {scheduleModalOpen && ScheduleModal()}
       {/* AddressFormModal removed */}
       {showCardModal && CardFormModal()}
       {selectedProduct && ProductDetailModal()}
-      
+      {reviewOrder && ReviewModal()}
+
     </div>
   );
 };

@@ -14,11 +14,15 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    /* Always reserve the scrollbar gutter so fixed bars (navbars) and the
+       scrollable content share the same width and stay aligned. */
+    scrollbar-gutter: stable;
   }
   body {
     font-family: 'Somar', sans-serif;
     direction: rtl;
-    text-align: right;
+    /* logical: right in RTL, left when the app flips to LTR */
+    text-align: start;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -133,3 +137,135 @@
   .pos-receipt { position: fixed; inset: 0 auto auto 0; width: 80mm; max-height: none; overflow: visible; border-radius: 0; box-shadow: none; padding: 6mm; }
   .no-print { display: none !important; }
 }
+
+/* ── Order Management: new-order slide-in ── */
+@keyframes orderIn {
+  from { opacity: 0; transform: translateY(-16px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+.order-in { animation: orderIn 0.35s ease-out; }
+
+/* ═══════════════ Website dark mode ═══════════════
+   Scoped to the `.dark` wrapper that WebsiteLayout applies — the portal and
+   the product apps (POS / ordering / delivery / manager) are untouched.
+   Strategy: remap the light-surface utilities the site is built from onto a
+   warm charcoal palette, so every page inherits dark mode without rewrites. */
+.dark { color-scheme: dark; }
+
+/* surfaces */
+.dark .bg-white { background-color: #252220; }
+.dark .bg-gray-50 { background-color: #2a2724; }
+.dark .bg-gray-100 { background-color: #302c28; }
+.dark .bg-brand-50 { background-color: #2b1c1a; }
+.dark .bg-brand-100 { background-color: #35211e; }
+.dark .bg-secondary-50 { background-color: #282318; }
+.dark .bg-secondary-100 { background-color: #302b1e; }
+.dark .bg-green-50 { background-color: #16241c; }
+.dark .bg-amber-50 { background-color: #292315; }
+/* cream arbitrary surfaces used across the site */
+.dark .bg-\[\#fffaf2\], .dark .bg-\[\#fffdf8\] { background-color: #191817; }
+.dark .bg-\[\#fbf7ef\], .dark .bg-\[\#fbf6ec\], .dark .bg-\[\#f7f1e8\] { background-color: #1b1a18; }
+.dark .bg-\[\#f4f1ec\] { background-color: #161514; }
+.dark .bg-\[\#f5ead9\], .dark .bg-\[\#f3e5ce\], .dark .bg-\[\#eadfce\], .dark .bg-\[\#eee1d0\] { background-color: #24221f; }
+/* frosted whites (navbar pill, glass chips) */
+.dark .bg-white\/75 { background-color: rgba(24, 23, 21, 0.75); }
+.dark .bg-white\/90 { background-color: rgba(24, 23, 21, 0.9); }
+.dark .bg-white\/95 { background-color: rgba(24, 23, 21, 0.95); }
+
+/* text */
+.dark .text-ink { color: #f1efeb; }
+.dark .text-gray-800 { color: #e8e5df; }
+.dark .text-gray-700 { color: #d5d0c6; }
+.dark .text-gray-600 { color: #b6afa3; }
+.dark .text-gray-500 { color: #9c968c; }
+.dark .text-gray-400 { color: #7f7a72; }
+.dark .text-brand-800 { color: #efe9e0; }
+.dark .text-brand-700 { color: #e5b9b0; }
+.dark .text-brand-600 { color: #de9d92; }
+/* keep ink text dark where it sits on gold fills (buttons, price pills, chips) */
+.dark .bg-secondary-500.text-ink,
+.dark .bg-secondary-400.text-ink,
+.dark .hover\:bg-secondary-600.text-ink { color: #1D1D1B; }
+
+/* borders + rings */
+.dark .border-gray-100, .dark .border-gray-200 { border-color: #302e2a; }
+.dark .border-\[\#eee1d0\], .dark .border-\[\#eadfce\], .dark .border-\[\#e7dcc9\],
+.dark .border-\[\#f0e7d8\], .dark .border-\[\#e4d6c2\], .dark .border-\[\#d8c7a8\] { border-color: #3a352e; }
+.dark [class*="divide-[#eee1d0]"] > :not([hidden]) ~ :not([hidden]) { border-color: #3a352e; }
+.dark .ring-black\/5 { --tw-ring-color: rgba(255, 255, 255, 0.08); }
+.dark .ring-\[\#f5ead9\] { --tw-ring-color: #1b1917; } /* step-number halo matches the section bg */
+
+/* light hovers that would flash white on dark */
+.dark .hover\:bg-gray-50:hover { background-color: #2a2724; }
+.dark .hover\:bg-gray-100:hover { background-color: #302c28; }
+.dark .hover\:bg-brand-50:hover { background-color: #2b1c1a; }
+
+/* parchment heritage surface → dark grain */
+.dark .bg-parchment {
+  background-color: #161514;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(232, 41, 76, 0.04) 0, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(248, 193, 93, 0.05) 0, transparent 40%);
+}
+
+/* light gradient stops (cream section gradients + marquee edge fades) */
+.dark .from-\[\#fbf7ef\] {
+  --tw-gradient-from: #161514 var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(22 21 20 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+.dark .to-\[\#f5ead9\] { --tw-gradient-to: #1b1917 var(--tw-gradient-to-position); }
+.dark .from-\[\#fbf6ec\] {
+  --tw-gradient-from: #191817 var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(25 24 23 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+/* partner/client logos — white silhouettes on dark so mixed brand colors don't clash */
+.dark .partner-logo { filter: brightness(0) invert(1); opacity: 0.92; }
+
+/* ── app-suite additions (ordering / delivery / manager / POS share the same .dark scope) ── */
+.dark .bg-pageBg, .dark .bg-\[\#FAF7F2\] { background-color: #151413; }
+.dark .bg-gray-200 { background-color: #363330; }
+.dark .bg-gray-300 { background-color: #403c37; }
+.dark .bg-gray-50\/60 { background-color: rgba(42, 39, 36, 0.6); }
+.dark .bg-blue-50 { background-color: #172230; }
+.dark .bg-indigo-50 { background-color: #1e1d31; }
+.dark .bg-red-50 { background-color: #2e1717; }
+.dark .text-gray-900 { color: #f1efeb; }
+.dark .text-gray-300 { color: #5b564f; }
+.dark .text-blue-700 { color: #8fb8e6; }
+.dark .text-indigo-600 { color: #a6a5ea; }
+.dark .text-indigo-700 { color: #b7b6ef; }
+.dark .text-red-600 { color: #e89090; }
+.dark .text-red-500 { color: #e07f7f; }
+.dark .text-green-600 { color: #6fcf8f; }
+.dark .text-green-500 { color: #5fc482; }
+.dark .text-amber-700 { color: #e0b26a; }
+.dark .border-gray-50 { border-color: #2a2724; }
+.dark .border-gray-300 { border-color: #423e38; }
+.dark .divide-gray-50 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #2e2b27; }
+.dark .hover\:bg-white:hover { background-color: #252220; }
+.dark .hover\:bg-gray-200:hover { background-color: #363330; }
+.dark .hover\:bg-red-50:hover { background-color: #2e1717; }
+.dark .hover\:bg-brand-100:hover { background-color: #35211e; }
+.dark .hover\:bg-secondary-100:hover { background-color: #302b1e; }
+/* inputs keep readable text */
+.dark input, .dark textarea, .dark select { caret-color: #f1efeb; }
+.dark .placeholder-gray-400::placeholder { color: #6f6a62; }
+.dark .bg-\[\#f3ece1\] { background-color: #151413; }
+.dark .lg\:from-\[\#efe7d9\] {
+  --tw-gradient-from: #171614 var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(23 22 20 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+.dark .lg\:to-\[\#e4d8c4\] { --tw-gradient-to: #1d1b18 var(--tw-gradient-to-position); }
+.dark .bg-pageBg\/95 { background-color: rgba(21, 20, 19, 0.95); }
+.dark .lg\:bg-pageBg\/95 { background-color: rgba(21, 20, 19, 0.95); }
+.dark .bg-\[\#f4f1ea\] { background-color: #151413; }
+/* the app shells carry `dark` on the same element as their page bg — compound selectors */
+.dark.bg-\[\#f4f1ea\], .dark.bg-\[\#FAF7F2\], .dark.bg-pageBg, .dark.bg-\[\#f3ece1\] { background-color: #151413; }
+/* emerald tint (manager dine-in tile) */
+.dark .bg-emerald-50 { background-color: #14261e; }
+.dark .text-emerald-600 { color: #5ecf9b; }

@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from './cn';
 
 const fieldBase =
-  'w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition';
+  'w-full bg-white border border-[#e7dcc9] rounded-xl px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition';
 
 /** Label + control wrapper that wires htmlFor/id for accessibility. */
 export const Field: React.FC<{ label: string; htmlFor: string; className?: string; children: React.ReactNode }> = ({

@@ -8,6 +8,7 @@ export interface PosProduct {
   category: string;
   image: string;
   modifiers?: ModGroup[];
+  stock?: number;      // available quantity (undefined = derived mock)
 }
 
 export const POS_CATEGORIES = ['كبسة ومندي', 'مشويات', 'شعبيات', 'مقبلات', 'حلويات', 'مشروبات'];

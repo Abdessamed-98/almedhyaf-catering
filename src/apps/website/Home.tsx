@@ -1,13 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { WebsitePage } from '../../types';
-import { X, ChevronLeft, ChevronRight, Download, ArrowLeft, MapPin } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Download, ArrowLeft, MapPin, ShoppingBag } from 'lucide-react';
 import { Clipboard, FoodSafety, Packaging, Truck, Report, Certified, Team, Locations } from '../../components/icons';
+import { FaWhatsapp } from 'react-icons/fa6';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Button } from '../../ui';
 import { motion } from 'motion/react';
 import PhotoStrip from './PhotoStrip';
 import LogoMarquee from './LogoMarquee';
+import { PARTNERS } from './Partners';
 import ServiceTicker from './ServiceTicker';
+import QuoteForm from './QuoteForm';
+import { useSiteTheme } from './WebsiteLayout';
+import Certifications from './Certifications';
+import Testimonials from './Testimonials';
 
 interface HomeProps {
   onNavigate: (page: WebsitePage) => void;
@@ -26,6 +32,7 @@ const IMG = (n: string) => `concept/${n}.jpg`;
 const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
   const { language } = useLanguage();
   const ar = language === 'ar';
+  const dark = useSiteTheme(); // swaps the hero art for its dark version
   const quote = () => onNavigate('CONTACT');
 
   // ── Gallery lightbox ──
@@ -58,11 +65,6 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
     <span dir="ltr" className={className}>{children}</span>
   );
 
-  const heroStats = [
-    { n: '1,020,000+', l: ar ? 'وجبة ساخنة تم إعدادها وتوزيعها' : 'hot meals prepared & distributed' },
-    { n: '350+', l: ar ? 'فريق متخصص في التشغيل والجودة' : 'specialists in ops & quality' },
-    { n: '40', l: ar ? 'سيارة نقل مجهزة وقابلة للتوسع' : 'equipped, scalable vehicles' },
-  ];
   const tags = ar
     ? ['تشغيل مواقع إعاشة', 'وجبات للحجاج', 'ولائم فاخرة', 'بوفيهات راقية', 'إفطار صائم', 'دعم الفعاليات', 'توزيع ميداني']
     : ['Catering sites', 'Pilgrim meals', 'Banquets', 'Premium buffets', 'Ramadan Iftar', 'Event support', 'Field delivery'];
@@ -106,10 +108,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
     { t: ar ? 'مشاوي مشكّلة' : 'Mixed Grill', s: ar ? 'تشكيلة على الفحم' : 'Charcoal selection', img: 'dishes/grill-2.jpg', tag: ar ? 'من المشاوي' : 'Grill' },
   ];
 
-  const clientLogos = [
-    'al_bait_guests', 'mashariq', 'holy_makkah_municipality', 'al_birr_al_khayriya',
-    'huda_association', 'al_ihsan_association', 'saeed_hamad_al_bishi', 'stc', 'fleet_zad_trading',
-  ].map(name => `clients/${name}_transparent.png`);
+  // Partners marquee — logos link to each partner's dedicated brief page (see Partners.tsx).
 
   const mini = [
     { b: '350+', t: ar ? 'موظف' : 'Employees', p: ar ? 'طهاة، تعبئة، توصيل، وجودة.' : 'Chefs, packing, delivery & quality.' },
@@ -161,21 +160,23 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
       <section className="relative overflow-hidden bg-[#f4f1ec] text-ink">
         {/* desktop banner — full width; the transparent nav overlays its top */}
         <img
-          src="banners/hero.jpg"
+          src={dark ? 'banners/hero-dark.webp' : 'banners/hero.webp'}
           alt={ar ? 'مبنى وأسطول وفريق المضياف العربي' : 'Al-Mudhayaf Al-Arabi building, fleet & team'}
+          fetchPriority="high"
           className="hidden lg:block w-full h-[calc(100vh-2.25rem)] object-cover object-center"
         />
-        {/* mobile banner — 1:1 crop with a white top gradient so the transparent nav reads */}
+        {/* mobile banner — 1:1 crop with a top gradient so the transparent nav reads */}
         <div className="lg:hidden relative">
           <img
-            src="banners/hero-mobile.jpg"
+            src={dark ? 'banners/hero-mobile-dark.webp' : 'banners/hero-mobile.webp'}
             alt={ar ? 'مبنى وأسطول وفريق المضياف العربي' : 'Al-Mudhayaf Al-Arabi building, fleet & team'}
+            fetchPriority="high"
             className="w-full aspect-square object-cover object-center block"
           />
-          <span className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white via-white/80 to-transparent pointer-events-none" />
+          <span className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white via-white/80 to-transparent dark:from-[#151413] dark:via-[#151413]/80 pointer-events-none" />
         </div>
-        {/* desktop: soft light wash over the right (text) zone for legibility */}
-        <span className="hidden lg:block absolute inset-0 bg-gradient-to-l from-[#f4f1ec]/70 via-[#f4f1ec]/10 to-transparent pointer-events-none" />
+        {/* desktop: soft wash over the right (text) zone for legibility */}
+        <span className="hidden lg:block absolute inset-0 bg-gradient-to-l from-[#f4f1ec]/70 via-[#f4f1ec]/10 to-transparent dark:from-[#151413]/70 dark:via-[#151413]/10 pointer-events-none" />
 
         {/* text — overlaid on the image's empty right zone (desktop), stacked below on mobile */}
         <div className="lg:absolute lg:inset-0 lg:z-[2]">
@@ -183,27 +184,32 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
             <motion.div {...fadeUp} className="w-full lg:w-[42%] py-10 lg:py-0">
               <span className="inline-flex items-center gap-3 text-brand-600 font-bold text-sm md:text-base">
                 <span className="h-px w-10 bg-gradient-to-r from-transparent to-secondary-500" />
-                {ar ? 'مطابخ وإعاشة من مكة المكرمة' : 'Kitchens & catering from Makkah'}
+                {ar ? 'المضياف العربي' : 'Al-Mudhayaf'}
               </span>
               <h1 className="mt-4 font-display font-black leading-[1.15] text-2xl lg:text-3xl xl:text-4xl text-brand-800">
-                {ar ? 'ضيافة تتحرك بدقّة الكرم العربي' : 'Hospitality, delivered with the precision of Arab generosity'}
+                {ar ? 'أصل الضيافة العربية' : 'The origin of Arab hospitality'}
               </h1>
               <p className="mt-5 text-sm lg:text-base xl:text-lg text-gray-700 leading-relaxed">
                 {ar
-                  ? 'من إعاشة ضيوف الرحمن وعقود الفنادق، إلى الولائم والمؤتمرات والمناسبات الخاصة — نجمع بين الكرم العربي والانضباط التشغيلي.'
-                  : 'From catering the Guests of Allah and hotel contracts to banquets, conferences and private occasions — Arab generosity with operational discipline.'}
+                  ? 'اطلب وجبتك الآن للتوصيل أو الاستلام، أو خطّط لإعاشة المشاريع الكبرى — من ضيوف الرحمن والفنادق إلى الولائم والمناسبات الخاصة.'
+                  : 'Order your meal now for delivery or pickup, or plan large-scale catering — from the Guests of Allah and hotels to banquets and private occasions.'}
               </p>
-              <div className="mt-7 flex flex-col sm:flex-row flex-wrap gap-3">
-                <Button variant="gold" size="lg" onClick={onOrderNow} className="w-full sm:w-auto justify-center">{ar ? 'اطلب الآن' : 'Order Now'}</Button>
-                <Button variant="outline" size="lg" onClick={() => onNavigate('MENU')} className="w-full sm:w-auto justify-center">{ar ? 'استعرض الخدمات' : 'Browse services'}</Button>
-              </div>
-              <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {heroStats.map((s, i) => (
-                  <div key={i} className="rounded-2xl bg-white/95 border border-[#eee1d0] shadow-sm p-4 flex items-center justify-between gap-3 sm:block">
-                    <Num className="text-2xl xl:text-3xl font-display font-bold text-brand-600 whitespace-nowrap">{s.n}</Num>
-                    <span className="text-xs text-gray-600 leading-snug text-end sm:block sm:mt-1.5 sm:text-start">{s.l}</span>
-                  </div>
-                ))}
+              <p className="mt-4 text-base lg:text-lg font-bold text-brand-800">
+                {ar
+                  ? <>أكثر من <span className="text-brand-600">15,000</span> وجبة يومياً.</>
+                  : <>Over <span className="text-brand-600">15,000</span> meals a day.</>}
+              </p>
+              <div className="mt-7 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md">
+                <motion.div
+                  animate={{ rotate: [0, -4, 4, -4, 4, -2, 2, 0] }}
+                  transition={{ duration: 0.7, repeat: Infinity, ease: 'easeInOut', repeatDelay: 2 }}
+                  className="w-full"
+                >
+                  <Button variant="primary" size="lg" onClick={onOrderNow} className="w-full justify-center">
+                    <ShoppingBag className="w-5 h-5" />{ar ? 'اطلب الآن' : 'Order Now'}
+                  </Button>
+                </motion.div>
+                <Button variant="gold" size="lg" onClick={() => onNavigate('MENU')} className="w-full justify-center">{ar ? 'استعرض الخدمات' : 'Browse services'}</Button>
               </div>
             </motion.div>
           </div>
@@ -214,6 +220,127 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
       <div className="bg-brand-600 text-white py-3.5 border-y border-brand-700/40">
         <ServiceTicker items={tags} />
       </div>
+
+      {/* ===== MENU TEASER (light) — preview of the banquet menu page ===== */}
+      <section className="bg-[#fffaf2] text-ink py-16 md:py-24">
+        <div className="max-w-7xl mx-auto px-6">
+          <motion.div {...fadeUp} className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+            <div>
+              <Kicker>{ar ? 'قائمة الولائم' : 'The Banquet Menu'}</Kicker>
+              <h2 className="mt-2 font-display font-black text-3xl md:text-4xl text-brand-800 leading-tight">{ar ? 'أطباق الكرم العربي على مائدتك' : 'Arab generosity, on your table'}</h2>
+              <p className="mt-3 text-gray-600 leading-relaxed max-w-xl">{ar ? 'من المندي والكبسة والمفطّح إلى المشاوي والحلويات الشرقية — تشكيلة واسعة تُحضَّر طازجة.' : 'From Mandi, Kabsa and Mufattah to grills and Eastern sweets — a wide, freshly prepared selection.'}</p>
+            </div>
+            <button onClick={() => onNavigate('DISHES')} className="shrink-0 inline-flex items-center gap-2 text-brand-700 font-bold hover:gap-3 transition-all">
+              {ar ? 'استعرض القائمة الكاملة' : 'View the full menu'} <ArrowLeft className="w-4 h-4 rtl:rotate-0 ltr:rotate-180" />
+            </button>
+          </motion.div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+            {menuPreview.map((m, i) => (
+              <motion.button
+                key={i}
+                {...fadeUp}
+                transition={{ ...fadeUp.transition, delay: i * 0.06 }}
+                onClick={() => onNavigate('DISHES')}
+                className="group relative overflow-hidden rounded-2xl border border-[#eadfce] shadow-sm aspect-[4/5] text-start"
+              >
+                <img src={m.img} alt={m.t} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <span className="absolute inset-0 bg-gradient-to-t from-brand-900/80 via-brand-900/15 to-transparent" />
+                <span className="absolute top-3 end-3 text-[11px] font-bold text-ink bg-secondary-400 rounded-full px-2.5 py-1 shadow">{m.tag}</span>
+                <span className="absolute bottom-4 start-4 end-4">
+                  <strong className="block font-display font-bold text-lg md:text-xl text-white drop-shadow">{m.t}</strong>
+                  <span className="block mt-0.5 text-white/80 text-xs">{m.s}</span>
+                </span>
+              </motion.button>
+            ))}
+          </div>
+
+          <motion.div {...fadeUp} className="mt-9 flex flex-col sm:flex-row flex-wrap justify-center gap-3">
+            <Button variant="gold" size="lg" onClick={() => onNavigate('DISHES')} className="w-full sm:w-auto justify-center">{ar ? 'استعرض القائمة' : 'View the menu'}</Button>
+            <Button variant="outline" size="lg" onClick={onOrderNow} className="w-full sm:w-auto justify-center">{ar ? 'اطلب الآن' : 'Order now'}</Button>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ===== APP DOWNLOAD BANNER (light) ===== */}
+      <section className="bg-[#fffaf2] text-ink py-12 md:py-16">
+        <div className="max-w-7xl mx-auto px-6">
+          <motion.button
+            {...fadeUp}
+            onClick={onOrderNow}
+            aria-label={ar ? 'حمّل تطبيق المضياف العربي' : 'Download the Al-Medhyaf app'}
+            className="group block w-full rounded-2xl overflow-hidden shadow-xl shadow-brand-900/10 ring-1 ring-[#eadfce] hover:shadow-2xl transition-shadow"
+          >
+            <img
+              src="banners/app-download.webp"
+              alt={ar ? 'حمّل تطبيق المضياف العربي' : 'Download the Al-Medhyaf app'}
+              className="w-full h-auto group-hover:scale-[1.01] transition-transform duration-500"
+            />
+          </motion.button>
+        </div>
+      </section>
+
+      {/* ===== BRANCHES (light) ===== */}
+      <section className="bg-[#f7f1e8] text-ink py-16 md:py-24">
+        <div className="max-w-7xl mx-auto px-6">
+          <motion.div {...fadeUp} className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
+            <div>
+              <Kicker>{ar ? 'فروع داخل مكة' : 'Branches inside Makkah'}</Kicker>
+              <h2 className="mt-2 font-display font-black text-3xl md:text-4xl text-brand-800 leading-tight max-w-xl">{ar ? 'حضور قريب من العميل ومناطق التشغيل' : 'Close to clients and to operating zones'}</h2>
+            </div>
+            <button onClick={() => onNavigate('BRANCHES')} className="shrink-0 inline-flex items-center gap-2 text-brand-700 font-bold hover:gap-3 transition-all">
+              {ar ? 'استكشف مطابخنا على الخريطة' : 'Explore our kitchens on the map'} <ArrowLeft className="w-4 h-4 rtl:rotate-0 ltr:rotate-180" />
+            </button>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {branches.map((b, i) => (
+              <motion.button
+                key={i}
+                {...fadeUp}
+                transition={{ ...fadeUp.transition, delay: i * 0.08 }}
+                onClick={() => onNavigate('BRANCHES')}
+                className="group text-start rounded-2xl overflow-hidden bg-white border border-[#eadfce] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              >
+                <div className="relative aspect-[4/3] overflow-hidden">
+                  <img src={b.img} alt={b.t} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-brand-900/60 via-transparent to-transparent" />
+                  <span className="absolute bottom-3 start-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur text-brand-700 text-xs font-bold shadow-sm">
+                    <MapPin className="w-3.5 h-3.5" /> {b.d}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3 px-6 py-5">
+                  <div>
+                    <strong className="block text-lg md:text-xl text-brand-800 leading-tight">{b.t}</strong>
+                    <span className="block mt-0.5 text-sm text-gray-500" dir="ltr">{b.l}</span>
+                  </div>
+                  <span className="w-9 h-9 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center shrink-0 group-hover:bg-brand-600 group-hover:text-white transition-colors">
+                    <ArrowLeft className="w-4 h-4 rtl:rotate-0 ltr:rotate-180" />
+                  </span>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ===== DELIVERY BANNER (light) ===== */}
+      <section className="bg-[#fffaf2] text-ink py-12 md:py-16">
+        <div className="max-w-7xl mx-auto px-6">
+          <motion.a
+            href="tel:920011618"
+            {...fadeUp}
+            className="group block rounded-2xl overflow-hidden shadow-xl shadow-brand-900/10 ring-1 ring-[#eadfce] hover:shadow-2xl transition-shadow"
+            aria-label={ar ? 'خدمة التوصيل السريع — اتصل الآن' : 'Fast delivery service — call now'}
+          >
+            <img
+              src="banners/delivery.jpg"
+              alt={ar ? 'خدمة التوصيل السريع' : 'Fast delivery service'}
+              className="w-full h-auto group-hover:scale-[1.01] transition-transform duration-500"
+            />
+          </motion.a>
+        </div>
+      </section>
 
       {/* ===== TRUST (dark gradient + Haram bg) ===== */}
       <section className="relative overflow-hidden bg-gradient-to-b from-[#19120e] to-[#211711] text-white border-y border-white/10">
@@ -271,47 +398,6 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
               </motion.div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ===== MENU TEASER (light) — preview of the banquet menu page ===== */}
-      <section className="bg-[#fffaf2] text-ink py-16 md:py-24">
-        <div className="max-w-7xl mx-auto px-6">
-          <motion.div {...fadeUp} className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
-            <div>
-              <Kicker>{ar ? 'قائمة الولائم' : 'The Banquet Menu'}</Kicker>
-              <h2 className="mt-2 font-display font-black text-3xl md:text-4xl text-brand-800 leading-tight">{ar ? 'أطباق الكرم العربي على مائدتك' : 'Arab generosity, on your table'}</h2>
-              <p className="mt-3 text-gray-600 leading-relaxed max-w-xl">{ar ? 'من المندي والكبسة والمفطّح إلى المشاوي والحلويات الشرقية — تشكيلة واسعة تُحضَّر طازجة.' : 'From Mandi, Kabsa and Mufattah to grills and Eastern sweets — a wide, freshly prepared selection.'}</p>
-            </div>
-            <button onClick={() => onNavigate('DISHES')} className="shrink-0 inline-flex items-center gap-2 text-brand-700 font-bold hover:gap-3 transition-all">
-              {ar ? 'استعرض القائمة الكاملة' : 'View the full menu'} <ArrowLeft className="w-4 h-4 rtl:rotate-0 ltr:rotate-180" />
-            </button>
-          </motion.div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
-            {menuPreview.map((m, i) => (
-              <motion.button
-                key={i}
-                {...fadeUp}
-                transition={{ ...fadeUp.transition, delay: i * 0.06 }}
-                onClick={() => onNavigate('DISHES')}
-                className="group relative overflow-hidden rounded-2xl border border-[#eadfce] shadow-sm aspect-[4/5] text-start"
-              >
-                <img src={m.img} alt={m.t} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                <span className="absolute inset-0 bg-gradient-to-t from-brand-900/80 via-brand-900/15 to-transparent" />
-                <span className="absolute top-3 end-3 text-[11px] font-bold text-ink bg-secondary-400 rounded-full px-2.5 py-1 shadow">{m.tag}</span>
-                <span className="absolute bottom-4 start-4 end-4">
-                  <strong className="block font-display font-bold text-lg md:text-xl text-white drop-shadow">{m.t}</strong>
-                  <span className="block mt-0.5 text-white/80 text-xs">{m.s}</span>
-                </span>
-              </motion.button>
-            ))}
-          </div>
-
-          <motion.div {...fadeUp} className="mt-9 flex flex-col sm:flex-row flex-wrap justify-center gap-3">
-            <Button variant="gold" size="lg" onClick={() => onNavigate('DISHES')} className="w-full sm:w-auto justify-center">{ar ? 'استعرض القائمة' : 'View the menu'}</Button>
-            <Button variant="outline" size="lg" onClick={onOrderNow} className="w-full sm:w-auto justify-center">{ar ? 'اطلب الآن' : 'Order now'}</Button>
-          </motion.div>
         </div>
       </section>
 
@@ -439,88 +525,6 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
         </div>
       </section>
 
-      {/* ===== BRANCHES (light) ===== */}
-      <section className="bg-[#f7f1e8] text-ink py-16 md:py-24">
-        <div className="max-w-7xl mx-auto px-6">
-          <motion.div {...fadeUp} className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
-            <div>
-              <Kicker>{ar ? 'فروع داخل مكة' : 'Branches inside Makkah'}</Kicker>
-              <h2 className="mt-2 font-display font-black text-3xl md:text-4xl text-brand-800 leading-tight max-w-xl">{ar ? 'حضور قريب من العميل ومناطق التشغيل' : 'Close to clients and to operating zones'}</h2>
-            </div>
-            <button onClick={() => onNavigate('BRANCHES')} className="shrink-0 inline-flex items-center gap-2 text-brand-700 font-bold hover:gap-3 transition-all">
-              {ar ? 'استكشف مطابخنا على الخريطة' : 'Explore our kitchens on the map'} <ArrowLeft className="w-4 h-4 rtl:rotate-0 ltr:rotate-180" />
-            </button>
-          </motion.div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {branches.map((b, i) => (
-              <motion.button
-                key={i}
-                {...fadeUp}
-                transition={{ ...fadeUp.transition, delay: i * 0.08 }}
-                onClick={() => onNavigate('BRANCHES')}
-                className="group text-start rounded-2xl overflow-hidden bg-white border border-[#eadfce] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-              >
-                <div className="relative aspect-[4/3] overflow-hidden">
-                  <img src={b.img} alt={b.t} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-brand-900/60 via-transparent to-transparent" />
-                  <span className="absolute bottom-3 start-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur text-brand-700 text-xs font-bold shadow-sm">
-                    <MapPin className="w-3.5 h-3.5" /> {b.d}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3 px-6 py-5">
-                  <div>
-                    <strong className="block text-lg md:text-xl text-brand-800 leading-tight">{b.t}</strong>
-                    <span className="block mt-0.5 text-sm text-gray-500" dir="ltr">{b.l}</span>
-                  </div>
-                  <span className="w-9 h-9 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center shrink-0 group-hover:bg-brand-600 group-hover:text-white transition-colors">
-                    <ArrowLeft className="w-4 h-4 rtl:rotate-0 ltr:rotate-180" />
-                  </span>
-                </div>
-              </motion.button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ===== WHY (light) — with delivery banner on top ===== */}
-      <section className="bg-[#fffaf2] text-ink py-16 md:py-24">
-        <div className="max-w-7xl mx-auto px-6">
-          {/* delivery banner */}
-          <motion.a
-            href="tel:920011618"
-            {...fadeUp}
-            className="group block mb-16 rounded-2xl overflow-hidden shadow-xl shadow-brand-900/10 ring-1 ring-[#eadfce] hover:shadow-2xl transition-shadow"
-            aria-label={ar ? 'خدمة التوصيل السريع — اتصل الآن' : 'Fast delivery service — call now'}
-          >
-            <img
-              src="banners/delivery.jpg"
-              alt={ar ? 'خدمة التوصيل السريع' : 'Fast delivery service'}
-              className="w-full h-auto group-hover:scale-[1.01] transition-transform duration-500"
-            />
-          </motion.a>
-
-          <motion.div {...fadeUp} className="mb-12">
-            <Kicker>{ar ? 'لماذا المضياف العربي؟' : 'Why Al-Mudhayaf Al-Arabi?'}</Kicker>
-            <h2 className="mt-2 font-display font-black text-3xl md:text-5xl text-brand-800">{ar ? 'أسباب تجعلنا الخيار الأنسب' : 'Why we’re the right choice'}</h2>
-          </motion.div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {why.map((w, i) => (
-              <motion.div key={i} {...fadeUp} transition={{ ...fadeUp.transition, delay: i * 0.05 }} className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-white to-secondary-50 border border-[#eadfce] p-6 shadow-sm">
-                <span className="w-9 h-9 rounded-full bg-brand-50 text-brand-700 font-black text-sm flex items-center justify-center mb-5" dir="ltr">{i + 1}</span>
-                <h3 className="font-bold text-brand-800 leading-snug">{w.t}</h3>
-                <p className="text-sm text-gray-600 mt-2 leading-relaxed">{w.d}</p>
-              </motion.div>
-            ))}
-          </div>
-          <motion.div {...fadeUp} className="mt-6 grid md:grid-cols-2 gap-6 items-center rounded-2xl bg-[#221713] text-white p-8 md:p-12 relative overflow-hidden">
-            <span className="absolute -end-40 -top-40 w-[30rem] h-[30rem] rounded-full bg-secondary-500/10" />
-            <h3 className="font-display font-bold text-2xl md:text-4xl leading-tight relative">{ar ? 'لا نبيع «وجبة» فقط، بل راحة تشغيل كاملة.' : 'We don’t sell a “meal” — we sell complete operational peace of mind.'}</h3>
-            <p className="text-white/75 leading-relaxed relative">{ar ? 'خبرة ميدانية، أسطول مجهّز، وفريق متخصص يضمن وصول إعاشتك في وقتها وبالجودة التي تستحقها.' : 'Field expertise, an equipped fleet and a specialized team — your catering arrives on time and at the quality you deserve.'}</p>
-          </motion.div>
-        </div>
-      </section>
-
       {/* ===== PROJECTS (light) ===== */}
       <section className="bg-[#f5ead9] text-ink py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-10 lg:gap-14 items-start">
@@ -580,7 +584,56 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
             </div>
           </motion.div>
         </div>
+
+        {/* featured project cards (teaser of the Projects page) */}
+        <div className="max-w-7xl mx-auto px-6 mt-12 md:mt-16">
+          <div className="flex items-end justify-between gap-4 mb-6">
+            <h3 className="font-display font-black text-2xl md:text-3xl text-brand-800">{ar ? 'أبرز مشاريعنا' : 'Featured projects'}</h3>
+            <button onClick={() => onNavigate('PROJECTS')} className="shrink-0 inline-flex items-center gap-2 text-brand-700 font-bold hover:gap-3 transition-all">{ar ? 'عرض كل المشاريع' : 'View all projects'} <ArrowLeft className="w-4 h-4 rtl:rotate-0 ltr:rotate-180" /></button>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-5">
+            {[
+              { t: ar ? 'مشروع حج ١٤٤٧هـ' : 'Hajj 1447', tag: ar ? 'الحج والعمرة' : 'Hajj & Umrah', img: 'services/hajj-umrah.jpg' },
+              { t: ar ? 'عقد إعاشة الفنادق ٢٠٢٤' : 'Hotels contract 2024', tag: ar ? 'الفنادق' : 'Hotels', img: 'services/hotels.jpg' },
+              { t: ar ? 'إفطار رمضان ١٤٤٦هـ' : 'Ramadan 1446H Iftar', tag: ar ? 'العمل الخيري' : 'Charity', img: 'services/iftar.jpg' },
+            ].map((c, i) => (
+              <button key={i} onClick={() => onNavigate('PROJECTS')} className="group relative overflow-hidden rounded-2xl border border-[#eadfce] shadow-sm aspect-[4/3] text-start">
+                <img src={c.img} alt={c.t} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <span className="absolute inset-0 bg-gradient-to-t from-brand-900/80 via-brand-900/20 to-transparent" />
+                <span className="absolute top-3 start-3 text-[11px] font-bold text-brand-700 bg-white/90 rounded-full px-2.5 py-1">{c.tag}</span>
+                <strong className="absolute bottom-3 start-4 end-4 font-display font-bold text-lg text-white drop-shadow">{c.t}</strong>
+              </button>
+            ))}
+          </div>
+        </div>
       </section>
+
+      {/* ===== WHY (light) ===== */}
+      <section className="bg-[#fffaf2] text-ink py-16 md:py-24">
+        <div className="max-w-7xl mx-auto px-6">
+          <motion.div {...fadeUp} className="mb-12">
+            <Kicker>{ar ? 'لماذا المضياف العربي؟' : 'Why Al-Mudhayaf Al-Arabi?'}</Kicker>
+            <h2 className="mt-2 font-display font-black text-3xl md:text-5xl text-brand-800">{ar ? 'أسباب تجعلنا الخيار الأنسب' : 'Why we’re the right choice'}</h2>
+          </motion.div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {why.map((w, i) => (
+              <motion.div key={i} {...fadeUp} transition={{ ...fadeUp.transition, delay: i * 0.05 }} className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-white to-secondary-50 border border-[#eadfce] p-6 shadow-sm">
+                <span className="w-9 h-9 rounded-full bg-brand-50 text-brand-700 font-black text-sm flex items-center justify-center mb-5" dir="ltr">{i + 1}</span>
+                <h3 className="font-bold text-brand-800 leading-snug">{w.t}</h3>
+                <p className="text-sm text-gray-600 mt-2 leading-relaxed">{w.d}</p>
+              </motion.div>
+            ))}
+          </div>
+          <motion.div {...fadeUp} className="mt-6 grid md:grid-cols-2 gap-6 items-center rounded-2xl bg-[#221713] text-white p-8 md:p-12 relative overflow-hidden">
+            <span className="absolute -end-40 -top-40 w-[30rem] h-[30rem] rounded-full bg-secondary-500/10" />
+            <h3 className="font-display font-bold text-2xl md:text-4xl leading-tight relative">{ar ? 'لا نبيع «وجبة» فقط، بل راحة تشغيل كاملة.' : 'We don’t sell a “meal” — we sell complete operational peace of mind.'}</h3>
+            <p className="text-white/75 leading-relaxed relative">{ar ? 'خبرة ميدانية، أسطول مجهّز، وفريق متخصص يضمن وصول إعاشتك في وقتها وبالجودة التي تستحقها.' : 'Field expertise, an equipped fleet and a specialized team — your catering arrives on time and at the quality you deserve.'}</p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ===== CERTIFICATIONS (light) — accreditations + certificate modal ===== */}
+      <Certifications />
 
       {/* ===== CLIENTS (light) — moving logos ===== */}
       <section className="relative bg-[#fbf6ec] text-ink py-10 md:py-14 overflow-hidden">
@@ -594,6 +647,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
           <motion.div {...fadeUp} className="text-center mb-4">
             <Kicker>{ar ? 'عملاؤنا وشركاء النجاح' : 'Our clients & partners'}</Kicker>
             <h2 className="mt-2 font-display font-black text-3xl md:text-5xl text-brand-800">{ar ? 'ثقة جهات رائدة' : 'Trusted by leading entities'}</h2>
+            <p className="mt-3 text-sm text-gray-500">{ar ? 'اضغط على شعار الشريك لعرض المشروع المنفّذ معه.' : 'Tap a partner logo to see the project executed with them.'}</p>
           </motion.div>
         </div>
         {/* marquee */}
@@ -601,11 +655,16 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
           {/* edge fades */}
           <div className="pointer-events-none absolute inset-y-0 left-0 w-16 md:w-32 z-10 bg-gradient-to-r from-[#fbf6ec] to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 w-16 md:w-32 z-10 bg-gradient-to-l from-[#fbf6ec] to-transparent" />
-          <LogoMarquee logos={clientLogos} />
+          <LogoMarquee
+            logos={PARTNERS.map(p => p.img)}
+            labels={PARTNERS.map(p => (ar ? p.name : p.nameEn))}
+            onSelect={(i) => { window.location.hash = '#website/partners/' + PARTNERS[i].id; }}
+          />
         </div>
       </section>
 
-      {/* ===== QUALITY (dark) ===== */}
+      {/* ===== QUALITY (dark) — hidden: replaced by the Certifications section ===== */}
+      {false && (
       <section className="bg-[#18120e] text-white py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <motion.div {...fadeUp}>
@@ -624,33 +683,33 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onOrderNow }) => {
           </div>
         </div>
       </section>
+      )}
+
+      {/* ===== TESTIMONIALS (light) — client reviews slider ===== */}
+      <Testimonials />
 
       {/* ===== CTA (dark) ===== */}
       <section className="bg-[#0f0e0d] text-white py-16 md:py-24 relative overflow-hidden">
         <span className="absolute -top-40 -end-24 w-[42rem] h-[42rem] rounded-full bg-brand-600/20 blur-3xl" />
         <div className="max-w-7xl mx-auto px-6 relative">
-          <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-8 md:p-14 grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-center">
-            <div>
-              <Eyebrow>{ar ? 'جاهزون للتعاون؟' : 'Ready to work together?'}</Eyebrow>
-              <h2 className="mt-3 font-display font-black text-3xl md:text-5xl leading-tight">{ar ? 'لنبحث احتياج الإعاشة القادم' : 'Let’s scope your next catering need'}</h2>
+          <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] overflow-hidden grid lg:grid-cols-2 items-stretch">
+            <div className="p-8 md:p-14">
+              <Eyebrow>{ar ? 'هل لديك مشروع إعاشة؟' : 'Have a catering project?'}</Eyebrow>
+              <h2 className="mt-3 font-display font-black text-3xl md:text-5xl leading-tight">{ar ? 'احصل على عرض سعر الآن' : 'Get a quote now'}</h2>
               <p className="mt-4 text-white/75 text-lg leading-relaxed max-w-xl">{ar ? 'أخبرنا بالمشروع، عدد الوجبات، موقع التوزيع، ونطاق الخدمة — ونعدّ لك عرضاً متكاملاً.' : 'Tell us the project, meal counts, distribution site and scope — we’ll build a complete proposal.'}</p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Button variant="gold" size="lg" onClick={quote}>{ar ? 'طلب عرض سعر' : 'Request a Quote'}</Button>
-                <a href="profile.pdf" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white font-bold transition-colors">
+              <div className="mt-8 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-5">
+                <a href="profile.pdf" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-4 sm:py-3 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white font-bold transition-colors">
                   <Download className="w-5 h-5" /> {ar ? 'تحميل الملف التعريفي' : 'Download profile'}
+                </a>
+                <a href="https://wa.me/966500000000" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-6 py-4 sm:py-3 rounded-full bg-[#25D366] hover:bg-[#1fb358] text-white font-bold shadow-lg shadow-green-900/20 transition-colors">
+                  <FaWhatsapp size={20} /> <span dir="ltr">9200 18 116</span>
                 </a>
               </div>
             </div>
-            <div className="rounded-2xl bg-[#fffaf2] text-ink p-8 shadow-2xl">
-              <strong className="text-2xl font-display font-bold text-brand-800 block">{ar ? 'المضياف العربي' : 'Al-Mudhayaf Al-Arabi'}</strong>
-              <div className="h-px bg-[#eadfce] my-6" />
-              <div className="space-y-4 text-sm">
-                <div className="flex justify-between items-center"><span className="text-gray-500">{ar ? 'الموقع' : 'Location'}</span><b className="text-brand-700">{ar ? 'مكة المكرمة' : 'Makkah'}</b></div>
-                <div className="flex justify-between items-center"><span className="text-gray-500">{ar ? 'الخدمة' : 'Service'}</span><b className="text-brand-700" dir="ltr">Catering</b></div>
-                <div className="flex justify-between items-center"><span className="text-gray-500">{ar ? 'الهاتف' : 'Phone'}</span><b className="text-brand-700" dir="ltr">9200 18 116</b></div>
-              </div>
-              <div className="h-px bg-[#eadfce] my-6" />
-              <button onClick={quote} className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-full transition-colors">{ar ? 'تواصل معنا' : 'Contact us'}</button>
+            <div className="bg-[#fffaf2] text-ink p-6 md:p-10 flex flex-col justify-center">
+              <h3 className="text-xl font-display font-bold text-brand-800 mb-1">{ar ? 'اطلب عرض سعر' : 'Request a quote'}</h3>
+              <p className="text-gray-500 text-sm mb-5">{ar ? 'عبّئ بياناتك وسنعاود التواصل بعرض مخصّص.' : 'Fill in your details and we’ll get back with a tailored quote.'}</p>
+              <QuoteForm idPrefix="home" />
             </div>
           </div>
         </div>

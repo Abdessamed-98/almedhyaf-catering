@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { X, Send, Bot } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa6';
 import { useLanguage } from '../contexts/LanguageContext';
+
+// Replace with the client's verified WhatsApp Business number (digits only, intl. format).
+const WHATSAPP_NUMBER = '966500000000';
 
 const ChatBot: React.FC = () => {
   const { t } = useLanguage();
@@ -24,19 +28,31 @@ const ChatBot: React.FC = () => {
 
   return (
     <>
+      {/* Floating WhatsApp — sits just above the assistant; same (start/RTL-left) corner */}
+      <a
+        href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(t('wa_prefill'))}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="WhatsApp"
+        className={`group fixed bottom-20 end-6 z-50 grid place-items-center w-12 h-12 rounded-full ring-2 ring-white/70 shadow-lg shadow-green-900/30 bg-[#25D366] text-white transition-transform hover:scale-110 active:scale-95 ${isOpen ? 'hidden' : ''}`}
+      >
+        <span className="absolute -top-0.5 -end-0.5 w-3 h-3 rounded-full bg-green-300 ring-2 ring-white" />
+        <FaWhatsapp size={24} />
+      </a>
+
       {/* Floating Button — animated assistant robot */}
       <button
         onClick={() => setIsOpen(true)}
         aria-label={t('chat_title')}
-        className={`group fixed bottom-6 end-6 z-50 grid place-items-center w-16 h-16 rounded-full ring-4 ring-white/70 shadow-xl shadow-brand-900/35 bg-gradient-to-br from-brand-500 via-brand-600 to-brand-800 text-white transition-transform hover:scale-110 active:scale-95 ${isOpen ? 'hidden' : ''}`}
+        className={`group fixed bottom-6 end-6 z-50 grid place-items-center w-12 h-12 rounded-full ring-2 ring-white/70 shadow-lg shadow-brand-900/35 bg-gradient-to-br from-brand-500 via-brand-600 to-brand-800 text-white transition-transform hover:scale-110 active:scale-95 ${isOpen ? 'hidden' : ''}`}
       >
         {/* attention pulse */}
         <span className="absolute inset-0 rounded-full bg-brand-500 opacity-40 animate-ping" />
         {/* online dot */}
-        <span className="absolute -top-0.5 -end-0.5 w-3.5 h-3.5 rounded-full bg-green-400 ring-2 ring-white" />
+        <span className="absolute -top-0.5 -end-0.5 w-3 h-3 rounded-full bg-green-400 ring-2 ring-white" />
         {/* robot */}
         <span className="robo-bob relative">
-          <svg viewBox="0 0 48 48" className="w-12 h-12 drop-shadow-sm" fill="none">
+          <svg viewBox="0 0 48 48" className="w-9 h-9 drop-shadow-sm" fill="none">
             {/* antenna */}
             <line x1="24" y1="6.5" x2="24" y2="11" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" />
             <circle className="robo-antenna" cx="24" cy="5" r="2.6" fill="#F8C15D" />

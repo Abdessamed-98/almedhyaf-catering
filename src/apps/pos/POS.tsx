@@ -1,17 +1,19 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { Search, Plus, Minus, Trash2, X, Check, Banknote, CreditCard, Smartphone, Printer, Utensils, ShoppingBag, Bike, ChevronLeft, TicketPercent, UserPlus, Hash, Users, User, Phone, Clock, Wallet, ArrowDownLeft, ArrowUpRight, Grid2x2, Grid3x3, AlignJustify } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Search, Plus, Minus, Trash2, X, Check, Banknote, CreditCard, Smartphone, Printer, Utensils, ShoppingBag, Bike, ChevronLeft, TicketPercent, UserPlus, Hash, Users, User, Phone, Clock, Wallet, ArrowDownLeft, ArrowUpRight, Grid2x2, Grid3x3, AlignJustify, MapPin, Moon, Sun } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../ui';
 import { POS_MENU, POS_CATEGORIES, PosProduct } from '../../data/menu';
+import { PosAddressModal } from './AddressMap';
 
 interface POSProps { onBackToPortal: () => void; }
 
 type OrderType = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
 type PayMethod = 'CASH' | 'MADA' | 'TRANSFER';
-interface Line { uid: string; product: PosProduct; qty: number; mods: Record<number, number[]>; unitPrice: number; modText: string; }
+interface LineAddon { optId: number; name: string; price: number; discount: number; }
+interface Line { uid: string; product: PosProduct; qty: number; mods: Record<number, number[]>; price: number; discount: number; addons: LineAddon[]; }
 interface Discount { type: 'PCT' | 'AMT'; value: number; }
-interface Cart { id: number; customer?: string; phone?: string; table?: string; lines: Line[]; orderType: OrderType; discount: Discount | null; }
-interface Sale { no: string; time: string; customer?: string; phone?: string; table?: string; orderType: OrderType; lines: Line[]; gross: number; discountAmount: number; vat: number; net: number; method: PayMethod; tendered?: number; change?: number; qr: string; }
+interface Cart { id: number; customer?: string; phone?: string; table?: string; area?: string; address?: string; lines: Line[]; orderType: OrderType; discount: Discount | null; }
+interface Sale { no: string; time: string; customer?: string; phone?: string; table?: string; area?: string; address?: string; orderType: OrderType; lines: Line[]; gross: number; discountAmount: number; vat: number; net: number; method: PayMethod; tendered?: number; change?: number; qr: string; }
 interface ShiftData { start: string; cashier: string; float: number; count: number; cash: number; mada: number; transfer: number; }
 interface Move { id: number; type: 'IN' | 'OUT'; amount: number; reason: string; time: string; }
 
@@ -39,6 +41,8 @@ const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
   const [cat, setCat] = useState('الكل');
   const [q, setQ] = useState('');
   const [cardSize, setCardSize] = useState<'big' | 'small' | 'text'>('small');
+  const [appDark, setAppDark] = useState(() => localStorage.getItem('pos-dark') === '1'); // dark mode (header toggle)
+  useEffect(() => { localStorage.setItem('pos-dark', appDark ? '1' : '0'); }, [appDark]);
   const [carts, setCarts] = useState<Cart[]>(() => Array.from({ length: 5 }, (_, i) => ({ id: i + 1, lines: [], orderType: 'DINE_IN', discount: null })));
   const [activeId, setActiveId] = useState(1);
   const orderNo = useRef(1);
@@ -51,11 +55,16 @@ const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
   const [discType, setDiscType] = useState<'PCT' | 'AMT'>('PCT');
   const [discValue, setDiscValue] = useState('');
 
+  // per-element price/discount editor (numpad)
+  const [priceEdit, setPriceEdit] = useState<{ uid: string; kind: 'main' } | { uid: string; kind: 'addon'; optId: number } | null>(null);
+  const [padPrice, setPadPrice] = useState('');
+  const [padDisc, setPadDisc] = useState(0);
+
   const [pay, setPay] = useState(false);
   const [method, setMethod] = useState<PayMethod>('CASH');
   const [tendered, setTendered] = useState('');
   const [sale, setSale] = useState<Sale | null>(null);
-  const [infoModal, setInfoModal] = useState<null | 'customer' | 'table'>(null);
+  const [infoModal, setInfoModal] = useState<null | 'customer' | 'table' | 'address'>(null);
 
   // shift + cash drawer
   const [shift, setShift] = useState<ShiftData | null>(null);
@@ -78,23 +87,33 @@ const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
     return m;
   }, []);
   const filtered = POS_MENU.filter(p => (cat === 'الكل' || p.category === cat) && (!q.trim() || p.name.includes(q)));
+  // how many of this product sit in the ACTIVE cart (across all its lines)
+  const qtyInCart = (pid: number) => lines.reduce((s, l) => s + (l.product.id === pid ? l.qty : 0), 0);
+  // available stock (mock, deterministic per product) — a few items are sold out
+  const stockOf = (p: PosProduct) => p.stock ?? (p.id % 9 === 0 ? 0 : 6 + ((p.id * 7) % 34));
 
   const patchCart = (fn: (c: Cart) => Cart) => setCarts(cs => cs.map(c => c.id === activeId ? fn(c) : c));
 
   const sig = (id: number, mods: Record<number, number[]>) => id + ':' + Object.entries(mods).map(([g, o]) => g + '=' + [...o].sort().join(',')).sort().join('|');
-  const addLine = (p: PosProduct, mods: Record<number, number[]>, unit: number, modText: string, qty = 1) => patchCart(c => {
+  const addLine = (p: PosProduct, mods: Record<number, number[]>, addons: LineAddon[], qty = 1) => patchCart(c => {
     const uid = sig(p.id, mods);
     const i = c.lines.findIndex(l => l.uid === uid);
     if (i >= 0) { const ls = [...c.lines]; ls[i] = { ...ls[i], qty: ls[i].qty + qty }; return { ...c, lines: ls }; }
-    return { ...c, lines: [...c.lines, { uid, product: p, qty, mods, unitPrice: unit, modText }] };
+    return { ...c, lines: [...c.lines, { uid, product: p, qty, mods, price: p.price, discount: 0, addons }] };
   });
   const setQty = (uid: string, qty: number) => patchCart(c => ({ ...c, lines: qty <= 0 ? c.lines.filter(l => l.uid !== uid) : c.lines.map(l => l.uid === uid ? { ...l, qty } : l) }));
   const clearActive = () => setCarts(cs => cs.map(c => c.id === activeId ? { id: c.id, lines: [], orderType: 'DINE_IN', discount: null } : c));
-  const setOrderType = (t: OrderType) => patchCart(c => ({ ...c, orderType: t }));
+  const setOrderType = (t: OrderType) => patchCart(c => ({
+    ...c,
+    orderType: t,
+    table: t === 'DINE_IN' ? c.table : undefined,       // table only for dine-in
+    area: t === 'DELIVERY' ? c.area : undefined,         // address only for delivery
+    address: t === 'DELIVERY' ? c.address : undefined,
+  }));
 
   // open product → modifier sheet (or add directly)
   const openProduct = (p: PosProduct) => {
-    if (!p.modifiers?.length) { addLine(p, {}, p.price, ''); return; }
+    if (!p.modifiers?.length) { addLine(p, {}, []); return; }
     const def: Record<number, number[]> = {};
     p.modifiers.forEach(g => { if (g.required && g.max === 1) def[g.id] = [g.options[0].id]; });
     setModSel(def);
@@ -111,20 +130,53 @@ const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
   const confirmMod = () => {
     const p = modProduct!;
     if (!p.modifiers!.every(g => !g.required || (modSel[g.id]?.length))) return;
-    let extra = 0; const names: string[] = [];
+    const addons: LineAddon[] = [];
     p.modifiers!.forEach(g => (modSel[g.id] || []).forEach(oid => {
       const o = g.options.find(x => x.id === oid)!;
-      extra += o.price;
-      if (o.price > 0 || g.options.length > 1) names.push(o.name);
+      addons.push({ optId: o.id, name: o.name, price: o.price, discount: 0 });
     }));
-    addLine(p, modSel, p.price + extra, names.join(' · '), modQty);
+    addLine(p, modSel, addons, modQty);
     setModProduct(null);
   };
 
+  // ── per-element price/discount editor ──
+  const openPriceEdit = (target: { uid: string; kind: 'main' } | { uid: string; kind: 'addon'; optId: number }) => {
+    const l = cart.lines.find(x => x.uid === target.uid);
+    if (!l) return;
+    if (target.kind === 'main') { setPadPrice(String(l.price)); setPadDisc(l.discount); }
+    else { const a = l.addons.find(x => x.optId === target.optId); setPadPrice(String(a?.price ?? 0)); setPadDisc(a?.discount ?? 0); }
+    setPriceEdit(target);
+  };
+  const padKey = (k: string) => {
+    if (k === '⌫') { setPadPrice(p => p.slice(0, -1)); return; }
+    if (k === '.') { setPadPrice(p => (p.includes('.') ? p : (p || '0') + '.')); return; }
+    setPadPrice(p => { const n = (p === '0' ? '' : p) + k; return n.replace('.', '').length > 6 ? p : n; });
+  };
+  const savePrice = () => {
+    if (!priceEdit) return;
+    const price = Math.max(0, parseFloat(padPrice) || 0);
+    const disc = Math.min(Math.max(0, padDisc), price);
+    patchCart(c => ({ ...c, lines: c.lines.map(l => {
+      if (l.uid !== priceEdit.uid) return l;
+      if (priceEdit.kind === 'main') return { ...l, price, discount: disc };
+      return { ...l, addons: l.addons.map(a => a.optId === priceEdit.optId ? { ...a, price, discount: disc } : a) };
+    }) }));
+    setPriceEdit(null);
+  };
+
+  // ── per-line money (editable prices + per-element discounts) ──
+  const unitGross = (l: Line) => l.price + l.addons.reduce((s, a) => s + a.price, 0);
+  const unitDisc = (l: Line) => l.discount + l.addons.reduce((s, a) => s + a.discount, 0);
+  const unitNet = (l: Line) => Math.max(0, unitGross(l) - unitDisc(l));
+  const lineTotal = (l: Line) => Math.round(unitNet(l) * l.qty * 100) / 100;
+
   // totals (VAT-inclusive prices)
-  const gross = lines.reduce((s, l) => s + l.unitPrice * l.qty, 0);
-  const discountAmount = discAmount(gross, cart.discount);
-  const net = Math.max(0, Math.round((gross - discountAmount) * 100) / 100);
+  const gross = lines.reduce((s, l) => s + unitGross(l) * l.qty, 0);
+  const itemDiscount = Math.round(lines.reduce((s, l) => s + unitDisc(l) * l.qty, 0) * 100) / 100;
+  const afterItems = Math.max(0, gross - itemDiscount);
+  const orderDiscount = discAmount(afterItems, cart.discount);
+  const discountAmount = Math.round((itemDiscount + orderDiscount) * 100) / 100; // total discount (for the receipt)
+  const net = Math.max(0, Math.round((afterItems - orderDiscount) * 100) / 100);
   const vat = Math.round(net * 15 / 115 * 100) / 100;
 
   const orderTypes: { id: OrderType; label: string; Icon: React.ComponentType<{ className?: string }> }[] = [
@@ -179,7 +231,7 @@ const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
     const no = `INV-${String(orderNo.current++).padStart(4, '0')}`;
     const tend = method === 'CASH' && tendered ? Number(tendered) : undefined;
     const s: Sale = {
-      no, time, customer: cart.customer, phone: cart.phone, table: cart.table, orderType: cart.orderType, lines, gross, discountAmount, vat, net, method,
+      no, time, customer: cart.customer, phone: cart.phone, table: cart.table, area: cart.area, address: cart.address, orderType: cart.orderType, lines, gross, discountAmount, vat, net, method,
       tendered: tend, change: tend !== undefined ? Math.max(0, tend - net) : undefined,
       qr: zatcaB64(time, net.toFixed(2), vat.toFixed(2)),
     };
@@ -196,21 +248,27 @@ const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
 
   const cashChips = Array.from(new Set([net, Math.ceil(net / 10) * 10, Math.ceil(net / 50) * 50, Math.ceil(net / 100) * 100])).slice(0, 4);
   const tabLabel = (c: Cart, i: number) => (c.customer && c.customer.trim()) ? c.customer : (c.table && c.table.trim()) ? (ar ? `طاولة ${c.table}` : `Table ${c.table}`) : `#${i + 1}`;
-  const lineAddons = (l: Line) => {
-    const out: { name: string; price: number }[] = [];
-    l.product.modifiers?.forEach(g => (l.mods[g.id] || []).forEach(oid => {
-      const o = g.options.find(x => x.id === oid);
-      if (o) out.push({ name: o.name, price: o.price });
-    }));
-    return out;
-  };
+
+  // a price rendered as a tappable "input" that opens the numpad
+  const priceBtn = (value: number, onClick: () => void, small = false) => (
+    <button onClick={onClick} className={`h-10 ${small ? 'min-w-[84px]' : 'min-w-[96px]'} px-3 rounded-xl border border-gray-300 bg-white flex items-center justify-between gap-2 hover:border-brand-400 active:scale-[0.98] transition-all shrink-0`}>
+      <span className="font-display font-bold text-gray-900" dir="ltr">{value.toFixed(0)}</span>
+      <span className="text-[10px] text-gray-400 font-semibold">{sar}</span>
+    </button>
+  );
+  const discRow = (value: number, onClick: () => void) => (
+    <button onClick={onClick} className="w-full flex items-center justify-between mt-2 bg-red-50 rounded-lg px-2.5 py-1.5">
+      <span className="text-xs font-bold text-red-600 flex items-center gap-1"><TicketPercent className="w-3.5 h-3.5" />{ar ? 'تخفيض' : 'Discount'}</span>
+      <span className="text-xs font-bold text-red-600" dir="ltr">−{value.toFixed(0)} {sar}</span>
+    </button>
+  );
 
   // live unit price inside the modifier sheet
   const modExtra = modProduct ? modProduct.modifiers!.reduce((s, g) => s + (modSel[g.id] || []).reduce((t, oid) => t + (g.options.find(o => o.id === oid)?.price || 0), 0), 0) : 0;
   const modUnit = (modProduct?.price ?? 0) + modExtra;
 
   return (
-    <div dir={dir} className="h-screen flex bg-[#f4f1ea] text-ink overflow-hidden font-sans">
+    <div dir={dir} className={`h-screen flex bg-[#f4f1ea] text-ink overflow-hidden font-sans ${appDark ? 'dark' : ''}`}>
 
       {/* ── main column (header + categories + grid) ── */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
@@ -228,8 +286,11 @@ const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
               </button>
             ))}
           </div>
+          {/* hidden for now per client: shift + cash drawer
           <button onClick={() => setShiftModal(true)} title={ar ? 'الوردية' : 'Shift'} className="relative w-10 h-10 rounded-xl hover:bg-gray-100 grid place-items-center text-gray-500 shrink-0"><Clock className="w-5 h-5" /><span className={`absolute top-1.5 end-1.5 w-2 h-2 rounded-full ring-2 ring-white ${shift ? 'bg-green-500' : 'bg-gray-300'}`} /></button>
           <button onClick={() => setDrawerModal(true)} title={ar ? 'درج النقود' : 'Cash drawer'} className="w-10 h-10 rounded-xl hover:bg-gray-100 grid place-items-center text-gray-500 shrink-0"><Wallet className="w-5 h-5" /></button>
+          */}
+          <button onClick={() => setAppDark(v => !v)} title={appDark ? (ar ? 'الوضع الفاتح' : 'Light mode') : (ar ? 'الوضع الداكن' : 'Dark mode')} className="w-10 h-10 rounded-xl hover:bg-gray-100 grid place-items-center text-gray-500 shrink-0">{appDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}</button>
           <span className="hidden lg:inline-flex items-center gap-2 text-sm text-gray-500 font-semibold ps-1"><span className="w-2 h-2 rounded-full bg-green-500" />{ar ? 'مكة - الشرائع' : 'Makkah - Sharai'}</span>
         </header>
 
@@ -248,8 +309,17 @@ const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
 
         <div className="flex-1 overflow-y-auto p-4">
           <div className={cardSize === 'big' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3' : cardSize === 'small' ? 'grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5' : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2'}>
-            {filtered.map(p => cardSize === 'text' ? (
-              <button key={p.id} onClick={() => openProduct(p)} className="group bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-300 text-start p-3 flex flex-col justify-between min-h-[76px] transition-all active:scale-[0.98]">
+            {filtered.map(p => {
+              const inCart = qtyInCart(p.id);
+              const remaining = Math.max(0, stockOf(p) - inCart);
+              const ended = stockOf(p) === 0;
+              // white-circle qty badge on every card; sold-out items get a label instead of "0"
+              const qtyBadge = ended
+                ? <span className="text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 rounded-full px-2 py-0.5 shadow-sm">{ar ? 'نفذ' : 'Out'}</span>
+                : <span className="min-w-[22px] h-[22px] px-1 rounded-full text-[11px] font-bold grid place-items-center bg-white text-gray-900 border border-gray-200 shadow">{remaining}</span>;
+              return cardSize === 'text' ? (
+              <button key={p.id} onClick={ended ? undefined : () => openProduct(p)} className={`group relative bg-white rounded-xl border shadow-sm text-start p-3 flex flex-col justify-between min-h-[76px] transition-all ${ended ? 'opacity-60 cursor-not-allowed border-gray-100' : `hover:shadow-md hover:border-brand-300 active:scale-[0.98] ${inCart ? 'border-brand-300' : 'border-gray-100'}`}`}>
+                <span className="absolute -top-2 -end-1.5">{qtyBadge}</span>
                 <h3 className="font-semibold text-sm text-gray-900 line-clamp-2 leading-snug">{p.name}</h3>
                 <div className="flex items-center justify-between mt-1.5">
                   <span className="font-display font-bold text-brand-700 text-sm">{p.price} <span className="text-[10px] text-gray-400 font-semibold">{sar}</span></span>
@@ -257,17 +327,18 @@ const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
                 </div>
               </button>
             ) : (
-              <button key={p.id} onClick={() => openProduct(p)} className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-300 text-start overflow-hidden transition-all active:scale-[0.98]">
+              <button key={p.id} onClick={ended ? undefined : () => openProduct(p)} className={`group bg-white rounded-2xl border shadow-sm text-start overflow-hidden transition-all ${ended ? 'cursor-not-allowed border-gray-100' : `hover:shadow-md hover:border-brand-300 active:scale-[0.98] ${inCart ? 'border-brand-300' : 'border-gray-100'}`}`}>
                 <div className={`relative ${cardSize === 'small' ? 'h-28' : 'h-32'} bg-gray-100`}>
-                  <img src={p.image} loading="lazy" alt="" className="w-full h-full object-cover" />
+                  <img src={p.image} loading="lazy" alt="" className={`w-full h-full object-cover ${ended ? 'grayscale opacity-60' : ''}`} />
                   {p.modifiers?.length ? <span className="absolute top-1.5 start-1.5 text-[10px] font-semibold bg-white/90 text-brand-700 rounded-full px-2 py-0.5">{ar ? 'خيارات' : 'Options'}</span> : null}
+                  <span className="absolute top-1.5 end-1.5">{qtyBadge}</span>
                 </div>
                 <div className={cardSize === 'small' ? 'p-2' : 'p-2.5'}>
-                  <h3 className={`font-semibold text-gray-900 line-clamp-2 leading-snug ${cardSize === 'small' ? 'text-xs h-8' : 'text-sm h-10'}`}>{p.name}</h3>
-                  <span className={`font-display font-bold text-brand-700 ${cardSize === 'small' ? 'text-sm' : 'text-base'}`}>{p.price} <span className="text-[10px] text-gray-400 font-semibold">{sar}</span></span>
+                  <h3 className={`font-semibold text-gray-900 line-clamp-2 leading-snug ${cardSize === 'small' ? 'text-xs h-8' : 'text-sm h-10'} ${ended ? 'text-gray-400' : ''}`}>{p.name}</h3>
+                  <span className={`font-display font-bold ${ended ? 'text-gray-400' : 'text-brand-700'} ${cardSize === 'small' ? 'text-sm' : 'text-base'}`}>{p.price} <span className="text-[10px] text-gray-400 font-semibold">{sar}</span></span>
                 </div>
               </button>
-            ))}
+            ); })}
           </div>
           {filtered.length === 0 && <div className="text-center text-gray-400 py-16 font-semibold">{ar ? 'لا توجد منتجات مطابقة' : 'No matching products'}</div>}
         </div>
@@ -300,10 +371,24 @@ const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
               <UserPlus className="w-4 h-4 text-gray-400 shrink-0" />
               <span className={`flex-1 text-start truncate ${cart.customer?.trim() ? 'text-gray-700' : 'text-gray-400 font-normal'}`}>{cart.customer?.trim() || (ar ? 'عميل' : 'Customer')}</span>
             </button>
-            <button onClick={() => setInfoModal('table')} className="h-10 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold hover:border-gray-300 transition-colors min-w-0">
-              <Hash className="w-4 h-4 text-gray-400 shrink-0" />
-              <span className={`flex-1 text-start truncate ${cart.table?.trim() ? 'text-gray-700' : 'text-gray-400 font-normal'}`}>{cart.table?.trim() ? (ar ? `طاولة ${cart.table}` : `Table ${cart.table}`) : (ar ? 'طاولة' : 'Table')}</span>
-            </button>
+            {cart.orderType === 'DELIVERY' ? (
+              // delivery → address option (opens the two-column address picker)
+              <button onClick={() => setInfoModal('address')} className="h-10 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold hover:border-gray-300 transition-colors min-w-0">
+                <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
+                <span className={`flex-1 text-start truncate ${(cart.area || cart.address?.trim()) ? 'text-gray-700' : 'text-gray-400 font-normal'}`}>{cart.area || cart.address?.trim() || (ar ? 'العنوان' : 'Address')}</span>
+              </button>
+            ) : cart.orderType === 'TAKEAWAY' ? (
+              // takeaway → no table needed
+              <div className="h-10 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold min-w-0 opacity-50 cursor-not-allowed" aria-disabled>
+                <Hash className="w-4 h-4 text-gray-300 shrink-0" />
+                <span className="flex-1 text-start truncate text-gray-400 font-normal">{ar ? 'بدون طاولة' : 'No table'}</span>
+              </div>
+            ) : (
+              <button onClick={() => setInfoModal('table')} className="h-10 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold hover:border-gray-300 transition-colors min-w-0">
+                <Hash className="w-4 h-4 text-gray-400 shrink-0" />
+                <span className={`flex-1 text-start truncate ${cart.table?.trim() ? 'text-gray-700' : 'text-gray-400 font-normal'}`}>{cart.table?.trim() ? (ar ? `طاولة ${cart.table}` : `Table ${cart.table}`) : (ar ? 'طاولة' : 'Table')}</span>
+              </button>
+            )}
           </div>
           <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
             {orderTypes.map(o => {
@@ -324,41 +409,39 @@ const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
               <ShoppingBag className="w-12 h-12 mb-3 opacity-30" />
               <p className="font-semibold">{ar ? 'أضف منتجات لبدء الطلب' : 'Add products to start an order'}</p>
             </div>
-          ) : lines.map(l => {
-            const addons = lineAddons(l);
-            return (
-              <div key={l.uid} className="flex gap-3 bg-gray-50 rounded-xl p-2.5">
-                {/* image — fixed size, qty overlaid */}
-                <div className="relative w-28 aspect-[5/4] rounded-lg overflow-hidden shrink-0 self-start">
-                  <img src={l.product.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                  <div className="absolute inset-x-0 bottom-0 h-8 bg-ink/60 backdrop-blur-sm flex items-center justify-between px-1">
-                    <button onClick={() => setQty(l.uid, l.qty - 1)} aria-label="-" className="w-7 h-7 grid place-items-center text-white active:scale-90 transition-transform">{l.qty === 1 ? <Trash2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}</button>
-                    <span className="text-white text-sm font-bold tabular-nums">{l.qty}</span>
-                    <button onClick={() => setQty(l.uid, l.qty + 1)} aria-label="+" className="w-7 h-7 grid place-items-center text-white active:scale-90 transition-transform"><Plus className="w-4 h-4" /></button>
-                  </div>
+          ) : lines.map(l => (
+              <div key={l.uid} className="bg-gray-50 border border-gray-200 rounded-2xl p-3">
+                {/* main item */}
+                <div className="flex items-start justify-between gap-2 mb-2.5">
+                  <h4 className="font-bold text-sm text-gray-900 leading-snug flex-1">{l.product.name}</h4>
+                  <button onClick={() => setQty(l.uid, 0)} aria-label={ar ? 'حذف' : 'Remove'} className="text-gray-300 hover:text-red-500 shrink-0 -mt-0.5 transition-colors"><Trash2 className="w-4 h-4" /></button>
                 </div>
-                {/* content + add-ons */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <h4 className="font-bold text-sm text-gray-900 truncate">{l.product.name}</h4>
-                    <span className="font-display font-bold text-brand-700 text-base shrink-0">{(l.unitPrice * l.qty).toFixed(0)} <span className="text-[10px] text-gray-400 font-semibold">{sar}</span></span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center bg-white border border-gray-200 rounded-xl h-10 shrink-0">
+                    <button onClick={() => setQty(l.uid, l.qty - 1)} aria-label="-" className="w-9 h-10 grid place-items-center text-brand-600 active:scale-90 transition-transform">{l.qty === 1 ? <Trash2 className="w-4 h-4 text-gray-400" /> : <Minus className="w-4 h-4" />}</button>
+                    <span className="w-8 text-center font-bold tabular-nums">{l.qty}</span>
+                    <button onClick={() => setQty(l.uid, l.qty + 1)} aria-label="+" className="w-9 h-10 grid place-items-center text-brand-600 active:scale-90 transition-transform"><Plus className="w-4 h-4" /></button>
                   </div>
-                  {addons.length > 0 && (
-                    <div className="border-t border-dashed border-gray-200 mt-2 pt-2 space-y-1">
-                      {addons.map((a, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-xs gap-2">
-                          <span className="text-gray-600 truncate">{a.name}</span>
-                          {a.price > 0
-                            ? <span className="text-gray-800 font-semibold shrink-0" dir="ltr">+{a.price} {sar}</span>
-                            : <span className="text-gray-300 shrink-0">—</span>}
+                  <div className="ms-auto">{priceBtn(l.price, () => openPriceEdit({ uid: l.uid, kind: 'main' }))}</div>
+                </div>
+                {l.discount > 0 && discRow(l.discount, () => openPriceEdit({ uid: l.uid, kind: 'main' }))}
+
+                {/* add-ons */}
+                {l.addons.length > 0 && (
+                  <div className="mt-3 border-t border-gray-100 pt-1">
+                    {l.addons.map((a, idx) => (
+                      <div key={a.optId} className={idx > 0 ? 'border-t border-gray-100 pt-2 mt-2' : 'pt-1'}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm text-gray-600 truncate flex-1">{a.name}</span>
+                          {priceBtn(a.price, () => openPriceEdit({ uid: l.uid, kind: 'addon', optId: a.optId }), true)}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                        {a.discount > 0 && discRow(a.discount, () => openPriceEdit({ uid: l.uid, kind: 'addon', optId: a.optId }))}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            );
-          })}
+          ))}
         </div>
 
         {/* summary + pay */}
@@ -375,7 +458,8 @@ const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
             )}
             <div className="space-y-1.5 text-sm">
               <div className="flex justify-between text-gray-500"><span>{ar ? 'المجموع' : 'Subtotal'}</span><span className="font-semibold text-gray-700">{gross.toFixed(2)} {sar}</span></div>
-              {discountAmount > 0 && <div className="flex justify-between text-green-600"><span>{ar ? 'الخصم' : 'Discount'}</span><span className="font-semibold" dir="ltr">- {discountAmount.toFixed(2)} {sar}</span></div>}
+              {itemDiscount > 0 && <div className="flex justify-between text-red-600"><span>{ar ? 'تخفيضات الأصناف' : 'Item discounts'}</span><span className="font-semibold" dir="ltr">- {itemDiscount.toFixed(2)} {sar}</span></div>}
+              {orderDiscount > 0 && <div className="flex justify-between text-green-600"><span>{ar ? 'خصم الطلب' : 'Order discount'}</span><span className="font-semibold" dir="ltr">- {orderDiscount.toFixed(2)} {sar}</span></div>}
               <div className="flex justify-between text-gray-500"><span>{ar ? 'شامل ض.ق.م (15%)' : 'incl. VAT (15%)'}</span><span className="font-semibold text-gray-700">{vat.toFixed(2)} {sar}</span></div>
               <div className="flex justify-between items-center pt-1.5 border-t border-dashed border-gray-200"><span className="font-display font-bold text-gray-900">{ar ? 'الإجمالي' : 'Total'}</span><span className="font-display font-bold text-xl text-brand-700">{net.toFixed(2)} {sar}</span></div>
             </div>
@@ -454,6 +538,60 @@ const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
           </div>
         </div>
       )}
+
+      {/* ── price / discount numpad ── */}
+      {priceEdit && (() => {
+        const l = lines.find(x => x.uid === priceEdit.uid);
+        if (!l) return null;
+        const name = priceEdit.kind === 'main' ? l.product.name : (l.addons.find(a => a.optId === priceEdit.optId)?.name ?? '');
+        const price = Math.max(0, parseFloat(padPrice) || 0);
+        const disc = Math.min(padDisc, price);
+        const netUnit = Math.max(0, price - disc);
+        const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫'];
+        return (
+          <div className="fixed inset-0 z-[55] bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setPriceEdit(null)}>
+            <div className="bg-white w-full max-w-sm rounded-3xl p-6" onClick={e => e.stopPropagation()}>
+              <div className="flex items-start justify-between gap-2 mb-4">
+                <div className="min-w-0">
+                  <h2 className="font-display font-bold text-xl text-gray-900">{ar ? 'تعديل السعر' : 'Edit price'}</h2>
+                  <p className="text-sm text-gray-400 truncate">{name}</p>
+                </div>
+                <button onClick={() => setPriceEdit(null)} className="w-9 h-9 rounded-full bg-gray-100 grid place-items-center text-gray-500 hover:bg-gray-200 shrink-0"><X className="w-5 h-5" /></button>
+              </div>
+
+              {/* fixed-height display — the net line is always reserved so the modal never resizes */}
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-4 text-center">
+                <div className="font-display font-extrabold text-4xl text-gray-900" dir="ltr">{padPrice || '0'} <span className="text-base text-gray-400 font-bold">{sar}</span></div>
+                <div className="h-5 mt-1.5 flex items-center justify-center gap-3 text-xs font-bold">
+                  {disc > 0 ? (
+                    <>
+                      <span className="text-red-600" dir="ltr">−{disc.toFixed(0)} {ar ? 'خصم' : 'off'}</span>
+                      <span className="text-gray-300">•</span>
+                      <span className="text-green-600" dir="ltr">{ar ? 'الصافي' : 'net'} {netUnit.toFixed(0)}</span>
+                    </>
+                  ) : <span className="text-gray-300">{ar ? 'بدون خصم' : 'no discount'}</span>}
+                </div>
+              </div>
+
+              <p className="text-xs font-semibold text-gray-400 mb-2">{ar ? 'تخفيض سريع' : 'Quick discount'}</p>
+              <div className="flex gap-2 mb-4">
+                {[5, 10, 20, 50].map(v => (
+                  <button key={v} onClick={() => setPadDisc(v)} className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors ${padDisc === v ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`} dir="ltr">−{v}</button>
+                ))}
+                <button onClick={() => setPadDisc(0)} className="px-3.5 py-2.5 rounded-xl text-sm font-bold bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors">{ar ? 'بدون' : 'None'}</button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {keys.map(k => (
+                  <button key={k} onClick={() => padKey(k)} className="h-14 rounded-2xl bg-gray-100 hover:bg-gray-200 font-display font-bold text-xl text-gray-900 active:scale-95 transition-all">{k}</button>
+                ))}
+              </div>
+
+              <button onClick={savePrice} className="w-full py-4 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-lg flex items-center justify-center gap-2 transition-colors"><Check className="w-5 h-5" />{ar ? 'حفظ' : 'Save'}</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── customer modal ── */}
       {infoModal === 'customer' && (
@@ -546,6 +684,16 @@ const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── delivery address — map (left) + search (right) ── */}
+      {infoModal === 'address' && (
+        <PosAddressModal
+          ar={ar}
+          initial={{ area: cart.area, address: cart.address }}
+          onClose={() => setInfoModal(null)}
+          onSave={(area, address) => { patchCart(c => ({ ...c, area, address })); setInfoModal(null); }}
+        />
       )}
 
       {/* ── shift manager (fixed, two columns) ── */}
@@ -739,16 +887,20 @@ const POS: React.FC<POSProps> = ({ onBackToPortal }) => {
                 {sale.customer && <div className="flex justify-between"><span>العميل</span><span className="font-semibold text-gray-700">{sale.customer}</span></div>}
                 {sale.phone && <div className="flex justify-between"><span>الجوال</span><span className="font-semibold text-gray-700" dir="ltr">{sale.phone}</span></div>}
                 {sale.table && <div className="flex justify-between"><span>الطاولة</span><span className="font-semibold text-gray-700">{sale.table}</span></div>}
+                {sale.orderType === 'DELIVERY' && (sale.area || sale.address?.trim()) && <div className="flex justify-between gap-4"><span className="shrink-0">العنوان</span><span className="font-semibold text-gray-700 text-end">{[sale.area, sale.address?.trim()].filter(Boolean).join(' · ')}</span></div>}
                 <div className="flex justify-between"><span>نوع الطلب</span><span className="font-semibold text-gray-700">{orderTypes.find(o => o.id === sale.orderType)?.label}</span></div>
               </div>
               <div className="my-3 border-t border-dashed border-gray-300" />
               <div className="space-y-1.5">
-                {sale.lines.map(l => (
-                  <div key={l.uid} className="flex justify-between text-sm">
-                    <div className="min-w-0"><span className="font-semibold text-gray-800">{l.qty}× {l.product.name}</span>{l.modText && <span className="block text-[11px] text-gray-400 truncate">{l.modText}</span>}</div>
-                    <span className="font-semibold text-gray-800 shrink-0 ps-2">{(l.unitPrice * l.qty).toFixed(2)}</span>
-                  </div>
-                ))}
+                {sale.lines.map(l => {
+                  const txt = l.addons.map(a => a.name).filter(Boolean).join(' · ');
+                  return (
+                    <div key={l.uid} className="flex justify-between text-sm">
+                      <div className="min-w-0"><span className="font-semibold text-gray-800">{l.qty}× {l.product.name}</span>{txt && <span className="block text-[11px] text-gray-400 truncate">{txt}</span>}</div>
+                      <span className="font-semibold text-gray-800 shrink-0 ps-2">{lineTotal(l).toFixed(2)}</span>
+                    </div>
+                  );
+                })}
               </div>
               <div className="my-3 border-t border-dashed border-gray-300" />
               <div className="space-y-1 text-sm">
